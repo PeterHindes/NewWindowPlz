@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New Window Plz — new windows from the Dock, ⌥Tab for every window</title>
-<meta name="description" content="A tiny macOS menu-bar app: clicking a Dock icon opens a new window, and ⌥Tab switches between individual windows on the current Space with a Metal overlay.">
+<meta name="description" content="A tiny macOS menu-bar app: clicking a Dock icon opens a new window, and ⌥Tab switches between individual windows — revealed in 0.21 ms from a resident Metal surface.">
 <meta name="theme-color" content="#08080b">
 <meta property="og:title" content="New Window Plz">
 <meta property="og:description" content="Dock clicks open new windows. ⌥Tab switches between individual windows, not just apps. A resident Metal overlay reveals in about 0.2 ms.">
@@ -26,6 +26,7 @@
     </a>
     <nav aria-label="Links">
       <a href="#features">Features</a>
+      <a href="#speed">Speed</a>
       <a href="#install">Install</a>
       <a href="https://github.com/PeterHindes/NewWindowPlz">GitHub</a>
     </nav>
@@ -38,7 +39,7 @@
     <div class="hero-copy">
       <p class="eyebrow"><span class="dot" aria-hidden="true"></span> macOS 14+ · Universal · Free</p>
       <h1>New windows.<br><span class="grad">One tap.</span></h1>
-      <p class="lede">A tiny menu-bar app with two jobs done properly: clicking a Dock icon opens a new window, and <kbd>⌥</kbd><kbd>Tab</kbd> switches between individual windows — not just apps.</p>
+      <p class="lede">A tiny menu-bar app with two jobs done properly: clicking a Dock icon opens a new window, and <kbd>⌥</kbd><kbd>Tab</kbd> switches between individual windows — on screen in about a fifth of a millisecond.</p>
 
       <div class="cta">
         <a class="button primary" href="https://github.com/PeterHindes/NewWindowPlz/releases/latest/download/NewWindowPlz-macOS.zip" download>
@@ -48,6 +49,21 @@
         <a class="button ghost" href="https://github.com/PeterHindes/NewWindowPlz">View source</a>
       </div>
 
+      <dl class="hero-stats">
+        <div>
+          <dt>Reveal</dt>
+          <dd>0.21<small>ms</small></dd>
+        </div>
+        <div>
+          <dt>End to end</dt>
+          <dd>0.43<small>ms</small></dd>
+        </div>
+        <div>
+          <dt>Windows created</dt>
+          <dd>0</dd>
+        </div>
+      </dl>
+
       <p class="fineprint">Requires macOS 14 Sonoma or later. Apple silicon and Intel. No account, no telemetry, no network access.</p>
     </div>
 
@@ -55,7 +71,7 @@
       <div class="frame">
         <img src="alttab-preview.jpg" width="1600" height="1025" alt="The Option-Tab window switcher showing five large cards with live window thumbnails, app icons and titles, and a rounded selection outline.">
       </div>
-      <figcaption>The ⌥Tab switcher with live window snapshots — one card per window, not per app.</figcaption>
+      <figcaption>The ⌥Tab switcher in snapshot mode — one card per window, not per app.</figcaption>
     </figure>
   </section>
 
@@ -88,19 +104,7 @@
     </div>
   </section>
 
-  <section id="snapshots" class="section snapshots">
-    <h2>Snapshots, when you ask for them</h2>
-    <p class="section-lede">Snapshot mode turns each entry into a card: a live thumbnail of the window, the app icon, the title, and a pixel-accurate rounded selection outline. It is optional. The compact icon row stays the default, so the switcher still opens instantly if Screen Recording hasn't been granted.</p>
-    <figure class="shot">
-      <div class="frame">
-        <img src="alttab-snapshots-slide.jpg" width="1600" height="1025" loading="lazy" alt="The switcher caught mid-slide between two pages: the selected Details card is centred, with the outgoing and incoming cards entering from both edges.">
-      </div>
-      <figcaption>Crossing a page boundary: the row slides, so the next window enters from the right instead of jumping.</figcaption>
-    </figure>
-    <p class="note">Documentation images use sample window content; the app captures the real windows on your Mac.</p>
-  </section>
-
-  <section class="section stats-section">
+  <section id="speed" class="section stats-section">
     <h2>Fast by construction</h2>
     <p class="section-lede">No window is created when you invoke it. One resident Metal surface is ordered in at launch and left at alpha zero, so revealing either overlay is an alpha flip — not a window, a layout pass, or a GPU wait.</p>
 
@@ -123,36 +127,44 @@
       </div>
     </div>
 
-    <ul class="checks">
-      <li><strong>A cached current-Space catalog.</strong> Window enumeration runs on a background queue and refreshes on app, launch and Space changes — opening the switcher just reads it.</li>
-      <li><strong>No SwiftUI on the hot path.</strong> SwiftUI is only used for Settings and onboarding; overlays are a layer-hosting <code>CAMetalLayer</code> view.</li>
-      <li><strong>Prewarmed Metal.</strong> Shaders, pipelines and text atlases are compiled at launch, so a Tab press only changes an index and submits one command buffer.</li>
-      <li><strong>No app activation.</strong> A non-activating panel at pop-up menu level joins all Spaces and works over full-screen apps.</li>
-      <li><strong>Idle means idle.</strong> The display link pauses whenever the overlay is hidden.</li>
-    </ul>
-  </section>
-
-  <section class="section split">
-    <div class="split-copy">
-      <h2>Metal that measures itself</h2>
-      <p>Both overlays are drawn by the same renderer, which also serves as its own benchmark harness. The Settings window reports <strong>Open</strong> and <strong>Switch prep</strong> timings after each preview, and the repo ships the scripts used for every number on this page.</p>
-      <p>Window snapshots are captured asynchronously and uploaded as textures only after the switcher is visible. If Screen Recording permission is missing, the switcher simply falls back to icons instead of failing.</p>
-      <p class="links"><a href="https://github.com/PeterHindes/NewWindowPlz#why-the-overlays-are-fast">Read the full performance notes →</a></p>
-    </div>
-
-    <figure class="bench">
-      <div class="bench-head">
-        <span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="bench-title">switcher-benchmark.sh</span>
+    <div class="perf-grid">
+      <div class="perf-copy">
+        <ul class="checks">
+          <li><strong>A cached current-Space catalog.</strong> Window enumeration runs on a background queue and refreshes on app, launch and Space changes — opening the switcher just reads it.</li>
+          <li><strong>No SwiftUI on the hot path.</strong> SwiftUI is only used for Settings and onboarding; overlays are a layer-hosting <code>CAMetalLayer</code> view.</li>
+          <li><strong>Prewarmed Metal.</strong> Shaders, pipelines and text atlases are compiled at launch, so a Tab press only changes an index and submits one command buffer.</li>
+          <li><strong>No app activation.</strong> A non-activating panel at pop-up menu level joins all Spaces and works over full-screen apps.</li>
+          <li><strong>Idle means idle.</strong> The display link pauses whenever the overlay is hidden.</li>
+        </ul>
+        <p class="links"><a href="https://github.com/PeterHindes/NewWindowPlz#why-the-overlays-are-fast">Read the full performance notes →</a></p>
       </div>
-      <pre><code><span class="prompt">$</span> ./scripts/switcher-benchmark.sh
+
+      <figure class="bench">
+        <div class="bench-head">
+          <span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="bench-title">switcher-benchmark.sh</span>
+        </div>
+        <pre><code><span class="prompt">$</span> ./scripts/switcher-benchmark.sh
 
 <span class="key">OVERLAY_BENCHMARK</span>   reveal_median_us=<span class="val">139.0</span>
 <span class="key">SWITCHER_BENCHMARK</span>  reveal_median_us=<span class="val">206.9</span>
                     warm_end_to_end_median_us=<span class="val">433.7</span>
                     cold_scan_us=<span class="val">26439.0</span></code></pre>
-      <figcaption>Measured on an M1 Max with a 120 Hz display.</figcaption>
+        <figcaption>Measured on an M1 Max with a 120 Hz display. The Settings window reports the same timings after each preview.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="snapshots" class="section snapshots">
+    <h2>Snapshots, when you ask for them</h2>
+    <p class="section-lede">Snapshot mode turns each entry into a card: a live thumbnail of the window, the app icon, the title, and a pixel-accurate rounded selection outline. It is optional. The compact icon row stays the default, so the switcher still opens instantly if Screen Recording hasn't been granted.</p>
+    <figure class="shot">
+      <div class="frame">
+        <img src="alttab-snapshots-slide.jpg" width="1600" height="1025" loading="lazy" alt="The switcher caught mid-slide between two pages: the selected Details card is centred, with the outgoing and incoming cards entering from both edges.">
+      </div>
+      <figcaption>Crossing a page boundary: the row slides, so the next window enters from the right instead of jumping.</figcaption>
     </figure>
+    <p class="note">Documentation images use sample window content; the app captures the real windows on your Mac.</p>
   </section>
 
   <section id="install" class="section install">
