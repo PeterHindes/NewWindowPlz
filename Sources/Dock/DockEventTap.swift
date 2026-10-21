@@ -1,0 +1,248 @@
+import AppKit
+import ApplicationServices
+import CoreGraphics
+import Foundation
+
+final class DockEventTap {
+    private static let magicUserData: Int64 = 0x4E57_504C_5A // "NWPLZ"
+
+    private let policy: DockClickPolicy
+    private let inspector: DockInspector
+    private let geometryCache: DockGeometryCache
+
+    private var tap: CFMachPort?
+    private var source: CFRunLoopSource?
+    private var runLoop: CFRunLoop?
+    private var tapThread: Thread?
+    private var pending: PendingClick?
+    private(set) var isRunning = false
+
+    var onOpenNewWindow: ((DockTile, pid_t) -> Void)?
+    var onTapRecovered: (() -> Void)?
+
+    private struct PendingClick {
+        let tile: DockTile
+        let pid: pid_t
+        let point: CGPoint
+        let startedAt: CFTimeInterval
+        var cancelled = false
+    }
+
+    init(inspector: DockInspector,
+         geometryCache: DockGeometryCache,
+         policy: DockClickPolicy = DockClickPolicy()) {
+        self.inspector = inspector
+        self.geometryCache = geometryCache
+        self.policy = policy
+    }
+
+    @discardableResult
+    func start() -> Bool {
+        guard !isRunning else { return true }
+
+        let mask = CGEventMask(1) << CGEventType.leftMouseDown.rawValue |
+            CGEventMask(1) << CGEventType.leftMouseDragged.rawValue |
+            CGEventMask(1) << CGEventType.leftMouseUp.rawValue
+
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: Self.eventTapCallback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else {
+            Log.dock.error("CGEvent.tapCreate returned nil. Accessibility may not be effective yet.")
+            return false
+        }
+
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        self.tap = tap
+        self.source = source
+        self.pending = nil
+
+        let ready = DispatchSemaphore(value: 0)
+        let thread = Thread { [weak self] in
+            guard let self, let source = self.source else { return }
+            let currentRunLoop = CFRunLoopGetCurrent()
+            self.runLoop = currentRunLoop
+            CFRunLoopAddSource(currentRunLoop, source, .commonModes)
+            CGEvent.tapEnable(tap: tap, enable: true)
+            ready.signal()
+            CFRunLoopRun()
+        }
+        thread.name = "NewWindowPlz Dock Event Tap"
+        thread.qualityOfService = .userInteractive
+        thread.stackSize = 512 * 1024
+        tapThread = thread
+        thread.start()
+
+        if ready.wait(timeout: .now() + 1.0) == .timedOut {
+            Log.dock.error("Event tap thread did not become ready.")
+            stop()
+            return false
+        }
+
+        isRunning = true
+        Log.dock.info("Dock event tap started.")
+        return true
+    }
+
+    func stop() {
+        guard isRunning || tap != nil else { return }
+
+        if let tap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+        }
+        if let runLoop {
+            CFRunLoopStop(runLoop)
+        }
+
+        tap = nil
+        source = nil
+        runLoop = nil
+        tapThread = nil
+        pending = nil
+        isRunning = false
+        Log.dock.info("Dock event tap stopped.")
+    }
+
+    private func handle(type: CGEventType,
+                        event: CGEvent) -> Unmanaged<CGEvent>? {
+        if event.getIntegerValueField(.eventSourceUserData) == Self.magicUserData {
+            return Unmanaged.passUnretained(event)
+        }
+
+        switch type {
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            pending = nil
+            if let tap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+            }
+            Log.dock.error("Event tap disabled by the system; re-enabled.")
+            DispatchQueue.main.async { [weak self] in
+                self?.onTapRecovered?()
+            }
+            return Unmanaged.passUnretained(event)
+
+        case .leftMouseDown:
+            return handleMouseDown(event: event)
+
+        case .leftMouseDragged:
+            guard var pending else {
+                return Unmanaged.passUnretained(event)
+            }
+            let dx = event.location.x - pending.point.x
+            let dy = event.location.y - pending.point.y
+            if (dx * dx + dy * dy) > 64 {
+                pending.cancelled = true
+                self.pending = pending
+            }
+            return nil
+
+        case .leftMouseUp:
+            return handleMouseUp(event: event)
+
+        default:
+            return Unmanaged.passUnretained(event)
+        }
+    }
+
+    private func handleMouseDown(event: CGEvent) -> Unmanaged<CGEvent>? {
+        guard pending == nil else {
+            pending = nil
+            return Unmanaged.passUnretained(event)
+        }
+
+        if !event.flags.intersection(DockClickPolicy.passThroughModifiers).isEmpty {
+            return Unmanaged.passUnretained(event)
+        }
+
+        let point = event.location
+        let snapshot = geometryCache.snapshot()
+        let slop = dockMagnificationEnabled ? 96.0 : 24.0
+        // Cached geometry is only a fast-path hint. An auto-hidden or
+        // magnified Dock can have moved since the last scan, so the screen
+        // edge prefilter deliberately errs on the side of consulting AX.
+        let cachedHit = snapshot.mightContainTile(at: point, slop: slop)
+        let nearScreenEdge = ScreenEdgeProximity.isNearAnyScreenEdge(point)
+        guard cachedHit || nearScreenEdge else {
+            return Unmanaged.passUnretained(event)
+        }
+
+        let hitTile: DockTile?
+        switch inspector.inspectApplicationTile(at: point) {
+        case .application(let tile):
+            hitTile = tile
+        case .notApplication:
+            return Unmanaged.passUnretained(event)
+        case .unavailable:
+            // The live AX round-trip can occasionally fail while Dock is
+            // rebuilding. Fall back to the last known geometry rather than
+            // silently losing the click.
+            hitTile = snapshot.tile(at: point, slop: 2)
+        }
+
+        if case .passThrough(let reason) = policy.decide(
+            isEnabled: true,
+            tile: hitTile,
+            modifiers: event.flags
+        ) {
+            Log.dock.debug("Passing Dock click through (\(reason.rawValue, privacy: .public)).")
+            return Unmanaged.passUnretained(event)
+        }
+
+        guard let tile = hitTile,
+              !DockSystemApps.isExcluded(tile),
+              let application = RunningApplicationResolver.application(for: tile),
+              application.activationPolicy == .regular else {
+            return Unmanaged.passUnretained(event)
+        }
+
+        pending = PendingClick(
+            tile: tile,
+            pid: application.processIdentifier,
+            point: point,
+            startedAt: CACurrentMediaTime()
+        )
+        Log.dock.debug("Intercepted Dock click for \(tile.title, privacy: .public).")
+        return nil
+    }
+
+    private func handleMouseUp(event: CGEvent) -> Unmanaged<CGEvent>? {
+        guard let pending else {
+            return Unmanaged.passUnretained(event)
+        }
+        self.pending = nil
+
+        let dx = event.location.x - pending.point.x
+        let dy = event.location.y - pending.point.y
+        let movedTooFar = (dx * dx + dy * dy) > 100
+        let tookTooLong = CACurrentMediaTime() - pending.startedAt > 2.0
+
+        if !pending.cancelled && !movedTooFar && !tookTooLong {
+            onOpenNewWindow?(pending.tile, pending.pid)
+        } else {
+            Log.dock.debug("Dock click cancelled after movement/timeout.")
+        }
+
+        return nil
+    }
+
+    private var dockMagnificationEnabled: Bool {
+        let value = CFPreferencesCopyAppValue(
+            "magnification" as CFString,
+            "com.apple.dock" as CFString
+        ) as? NSNumber
+        return (value?.doubleValue ?? 0) > 0
+    }
+
+    private static let eventTapCallback: CGEventTapCallBack = { _, type, event, refcon in
+        guard let refcon else {
+            return Unmanaged.passUnretained(event)
+        }
+        let eventTap = Unmanaged<DockEventTap>.fromOpaque(refcon).takeUnretainedValue()
+        return eventTap.handle(type: type, event: event)
+    }
+}
