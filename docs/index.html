@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Window Plz — new windows from the Dock, ⌥Tab for every window</title>
+<meta name="description" content="A tiny macOS menu-bar app: clicking a Dock icon opens a new window, and ⌥Tab switches between individual windows on the current Space with a Metal overlay.">
+<meta name="theme-color" content="#08080b">
+<meta property="og:title" content="New Window Plz">
+<meta property="og:description" content="Dock clicks open new windows. ⌥Tab switches between individual windows, not just apps. A resident Metal overlay reveals in about 0.2 ms.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://peterhindes.github.io/NewWindowPlz/">
+<meta property="og:image" content="https://peterhindes.github.io/NewWindowPlz/alttab-preview.jpg">
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/NewWindowPlz/">
+      <img src="icon.png" alt="" width="26" height="26">
+      <span>New Window Plz</span>
+    </a>
+    <nav aria-label="Links">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/PeterHindes/NewWindowPlz">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="dot" aria-hidden="true"></span> macOS 14+ · Universal · Free</p>
+      <h1>New windows.<br><span class="grad">One tap.</span></h1>
+      <p class="lede">A tiny menu-bar app with two jobs done properly: clicking a Dock icon opens a new window, and <kbd>⌥</kbd><kbd>Tab</kbd> switches between individual windows — not just apps.</p>
+
+      <div class="cta">
+        <a class="button primary" href="https://github.com/PeterHindes/NewWindowPlz/releases/latest/download/NewWindowPlz-macOS.zip" download>
+          Download for macOS
+          <span class="button-meta">1.2 · 1.3 MB</span>
+        </a>
+        <a class="button ghost" href="https://github.com/PeterHindes/NewWindowPlz">View source</a>
+      </div>
+
+      <p class="fineprint">Requires macOS 14 Sonoma or later. Apple silicon and Intel. No account, no telemetry, no network access.</p>
+    </div>
+
+    <figure class="shot">
+      <img src="alttab-preview.jpg" width="1600" height="1025" alt="The Option-Tab switcher overlaying the desktop, showing large cards of five windows with app icons and titles over a dimmed background.">
+      <figcaption>The ⌥Tab switcher with optional window snapshots.</figcaption>
+    </figure>
+  </section>
+
+  <section id="features" class="section">
+    <h2>Two jobs, no compromises</h2>
+    <div class="cards">
+      <article class="card">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg>
+        </div>
+        <h3>Dock clicks make windows</h3>
+        <p>Click a running app's Dock icon and it receives its own <strong>New Window</strong> command. Hold <kbd>⇧</kbd> — or any other modifier — for the Dock's normal behaviour. Folders, Trash, right-clicks and drags are left alone.</p>
+      </article>
+
+      <article class="card">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><rect x="8.5" y="3" width="13" height="12" rx="2.5"/></svg>
+        </div>
+        <h3>⌥Tab sees every window</h3>
+        <p>One entry per on-screen window on the current Space, with titles. Tap <kbd>Tab</kbd> to cycle, arrows to move, release <kbd>⌥</kbd> to raise the exact window. <kbd>Esc</kbd> cancels. System <kbd>⌘</kbd><kbd>Tab</kbd> stays untouched.</p>
+      </article>
+
+      <article class="card">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="13" rx="2.5"/><path d="M8 21h8M12 17.5V21"/></svg>
+        </div>
+        <h3>Snapshots when you want them</h3>
+        <p>An optional mode shows up to five large window cards with live thumbnails, app icons and titles. Captures start only after the switcher is on screen, so they never delay it.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section stats-section">
+    <h2>Fast by construction</h2>
+    <p class="section-lede">No window is created when you invoke it. One resident Metal surface is ordered in at launch and left at alpha zero, so revealing either overlay is an alpha flip — not a window, a layout pass, or a GPU wait.</p>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-value">0.21<span>ms</span></span>
+        <span class="stat-label">to reveal a cached window list</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">0.43<span>ms</span></span>
+        <span class="stat-label">end-to-end, enumeration from cache</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">8.3<span>ms</span></span>
+        <span class="stat-label">to the next 120 Hz refresh</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">0</span>
+        <span class="stat-label">GPU waits on the interactive path</span>
+      </div>
+    </div>
+
+    <ul class="checks">
+      <li><strong>A cached current-Space catalog.</strong> Window enumeration runs on a background queue and refreshes on app, launch and Space changes — opening the switcher just reads it.</li>
+      <li><strong>No SwiftUI on the hot path.</strong> SwiftUI is only used for Settings and onboarding; overlays are a layer-hosting <code>CAMetalLayer</code> view.</li>
+      <li><strong>Prewarmed Metal.</strong> Shaders, pipelines and text atlases are compiled at launch, so a Tab press only changes an index and submits one command buffer.</li>
+      <li><strong>No app activation.</strong> A non-activating panel at pop-up menu level joins all Spaces and works over full-screen apps.</li>
+      <li><strong>Idle means idle.</strong> The display link pauses whenever the overlay is hidden.</li>
+    </ul>
+  </section>
+
+  <section class="section split">
+    <figure class="shot small">
+      <img src="overlay-preview.jpg" width="1600" height="1025" alt="A full-screen demonstration overlay drawn by the Metal renderer, showing a ring of rounded rectangles labelled A through F around a centre crosshair." loading="lazy">
+    </figure>
+    <div class="split-copy">
+      <h2>Metal that measures itself</h2>
+      <p>Both overlays are drawn by the same renderer, which also serves as its own benchmark harness. The Settings window reports <strong>Open</strong> and <strong>Switch prep</strong> timings after each preview, and the repo ships the scripts used for the numbers above.</p>
+      <p>Window snapshots are captured asynchronously and uploaded as textures only after the switcher is visible. If Screen Recording permission is missing, the switcher simply falls back to icons instead of failing.</p>
+      <p class="links"><a href="https://github.com/PeterHindes/NewWindowPlz#why-the-overlays-are-fast">Read the full performance notes →</a></p>
+    </div>
+  </section>
+
+  <section id="install" class="section install">
+    <h2>Install</h2>
+    <ol class="steps">
+      <li>
+        <span class="step-num">1</span>
+        <div>
+          <h3>Download and unzip</h3>
+          <p>Grab the latest release, unzip it, and move <strong>New Window Plz.app</strong> into <code>/Applications</code>. Move it there <em>before</em> granting permissions so macOS remembers them.</p>
+        </div>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <div>
+          <h3>Launch and grant Accessibility</h3>
+          <p>The app lives in the menu bar. Choose <strong>Grant Accessibility Access</strong>, then enable <strong>New Window Plz</strong> in System Settings → Privacy &amp; Security → Accessibility.</p>
+        </div>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <div>
+          <h3>Optionally allow snapshots</h3>
+          <p>Turn on <strong>Window switcher → Show window snapshots</strong> and grant Screen Recording when asked. Relaunch the app after granting it.</p>
+        </div>
+      </li>
+    </ol>
+
+    <aside class="callout">
+      <h3>About macOS Gatekeeper</h3>
+      <p>This build is ad-hoc signed but <strong>not notarized</strong>, so macOS warns the first time you open it. Right-click the app → <strong>Open</strong>, or clear the quarantine flag once:</p>
+      <div class="cmd">
+        <code id="xattr-cmd">xattr -dr com.apple.quarantine "/Applications/New Window Plz.app"</code>
+        <button class="copy" type="button" data-copy="#xattr-cmd" aria-label="Copy command">Copy</button>
+      </div>
+      <p class="small">Building from source is equally supported and avoids the warning entirely — see the <a href="https://github.com/PeterHindes/NewWindowPlz#install">README</a>.</p>
+    </aside>
+  </section>
+
+  <section class="section privacy">
+    <h2>Permissions, explained</h2>
+    <div class="permissions">
+      <div>
+        <h3>Accessibility</h3>
+        <p>Used to read the Dock, trigger the target app's own New Window command, intercept <kbd>⌥</kbd><kbd>Tab</kbd>, and raise a specific window by ID.</p>
+      </div>
+      <div>
+        <h3>Screen Recording <span class="optional">optional</span></h3>
+        <p>Only when snapshots are enabled, and only to capture the visible windows listed in the switcher.</p>
+      </div>
+      <div>
+        <h3>Nothing else</h3>
+        <p>No network access, no analytics, no window contents otherwise. Settings and login-item state stay on your Mac.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section limits">
+    <h2>Good to know</h2>
+    <ul>
+      <li>Only the active Space's on-screen windows are listed. Minimized windows and other Spaces are excluded by design.</li>
+      <li>Apps with neither a New Window menu item nor a <kbd>⌘</kbd><kbd>N</kbd> behaviour simply activate; they can't be made multi-window.</li>
+      <li>Secure input fields can keep global keyboard taps from seeing <kbd>⌥</kbd><kbd>Tab</kbd>.</li>
+      <li>Not sandboxed and not Mac App Store compatible — Accessibility event taps require it.</li>
+      <li>Rebuilding with a different ad-hoc signature may require re-granting permissions.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="icon.png" alt="" width="22" height="22">
+      <span>New Window Plz <span class="version">1.2</span></span>
+    </div>
+    <nav aria-label="Footer">
+      <a href="https://github.com/PeterHindes/NewWindowPlz">Source</a>
+      <a href="https://github.com/PeterHindes/NewWindowPlz/releases">Releases</a>
+      <a href="https://github.com/PeterHindes/NewWindowPlz/issues">Issues</a>
+    </nav>
+    <p class="copyright">Made for macOS. © 2026 Peter Hindes.</p>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll(".copy").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var target = document.querySelector(button.dataset.copy);
+      if (!target) return;
+      var done = function () {
+        button.textContent = "Copied";
+        setTimeout(function () { button.textContent = "Copy"; }, 1600);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(target.textContent).then(done, function () {});
+      } else {
+        var range = document.createRange();
+        range.selectNodeContents(target);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    });
+  });
+</script>
+</body>
+</html>

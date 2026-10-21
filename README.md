@@ -58,7 +58,15 @@ If snapshots remain blank after granting Screen Recording, relaunch the app. The
 
 ## Install
 
-Requirements: macOS 14 or later, Xcode 27+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+**[Download New Window Plz 1.2](https://github.com/PeterHindes/NewWindowPlz/releases/latest/download/NewWindowPlz-macOS.zip)** — 1.2 MB, macOS 14+, universal. There's also a [landing page](https://peterhindes.github.io/NewWindowPlz/).
+
+The download is ad-hoc signed but not notarized, so macOS warns the first time you open it. Right-click → **Open**, or clear the quarantine flag once:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/New Window Plz.app"
+```
+
+To build it yourself instead, you need macOS 14 or later, Xcode 27+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```bash
 ./scripts/build.sh
