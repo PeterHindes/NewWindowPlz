@@ -203,10 +203,22 @@ kbd {
 .fineprint { margin: 20px 0 0; color: var(--dim); font-size: 14px; }
 
 .shot { margin: 0; }
-.shot img {
+
+/* The store preview is a full-screen render; crop to the switcher's band so
+   the cards read at a useful size on the landing page. */
+.frame {
+  aspect-ratio: 2.2 / 1;
+  overflow: hidden;
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #090c12;
   box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 53%;
 }
 .shot figcaption { margin-top: 12px; color: var(--dim); font-size: 13.5px; text-align: center; }
 
@@ -332,10 +344,62 @@ code {
   align-items: center;
   border-top: 1px solid var(--line);
 }
-.split .shot img { border-radius: 14px; }
 .split-copy h2 { margin-top: 0; }
 .split-copy p { color: var(--muted); font-size: 16px; }
 .links { margin-top: 18px; font-size: 15px; }
+
+/* ---------- benchmark card ---------- */
+
+.bench {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0e1016, #0a0b0f);
+  overflow: hidden;
+  box-shadow: 0 30px 60px -34px rgba(0, 0, 0, 0.95);
+}
+
+.bench-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+.traffic { display: flex; gap: 6px; }
+.traffic i { width: 9px; height: 9px; border-radius: 50%; background: #292c36; }
+.bench-title {
+  color: var(--dim);
+  font: 500 12px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+
+.bench pre {
+  margin: 0;
+  padding: 20px;
+  overflow-x: auto;
+  color: #d2d7e4;
+  font: 500 13px/1.95 ui-monospace, "SF Mono", Menlo, monospace;
+  -webkit-font-smoothing: auto;
+}
+.bench code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+.bench .prompt { color: #5c6781; }
+.bench .key { color: #8fb3ff; }
+.bench .val { color: #93ecc0; }
+
+.bench figcaption {
+  padding: 12px 20px 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--dim);
+  font-size: 12.5px;
+}
 
 /* ---------- install ---------- */
 
@@ -475,12 +539,10 @@ footer nav a { color: var(--muted); }
 @media (min-width: 900px) {
   .hero { grid-template-columns: 1fr; padding-top: 96px; }
   .hero-copy { max-width: 620px; }
-  .shot img { width: 100%; }
 }
 
 @media (max-width: 820px) {
   .split { grid-template-columns: 1fr; gap: 32px; }
-  .split .shot { order: 2; }
   .hero { padding-top: 56px; }
   .nav nav a:not(:last-child) { display: none; }
 }
@@ -492,6 +554,7 @@ footer nav a { color: var(--muted); }
   .cta .button { flex: 1 1 100%; justify-content: center; }
   .stats { grid-template-columns: 1fr 1fr; }
   .stat-value { font-size: 32px; }
+  .bench pre { font-size: 11px; padding: 16px; }
   footer nav { margin-left: 0; }
 }
 
