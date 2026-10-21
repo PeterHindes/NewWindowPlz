@@ -12,6 +12,8 @@ final class AltTabController {
     private var cachedWindows: [AltTabWindow] = []
     private var windows: [AltTabWindow] = []
     private var selectedIndex = 0
+    private var lastActivatedWindow: AltTabWindow?
+    private var lastActivatedAt: CFTimeInterval = 0
     private var isPresenting = false
     private var isScanningCatalog = false
     private var scanAgain = false
@@ -126,6 +128,7 @@ final class AltTabController {
         windows = availableWindows
         overlayHost.prepareWindowSwitcherCache(windows: windows)
         selectedIndex = AltTabSelection.initialIndex(count: windows.count, reverse: false)
+        skipCurrentWindowIfNeeded(reverse: false)
         guard overlayHost.showWindowSwitcher(
             windows: windows,
             selectedIndex: selectedIndex,
@@ -156,6 +159,7 @@ final class AltTabController {
         windows = availableWindows
         overlayHost.prepareWindowSwitcherCache(windows: windows)
         selectedIndex = AltTabSelection.initialIndex(count: windows.count, reverse: reverse)
+        skipCurrentWindowIfNeeded(reverse: reverse)
         guard overlayHost.showWindowSwitcher(
             windows: windows,
             selectedIndex: selectedIndex,
@@ -194,6 +198,9 @@ final class AltTabController {
 
         guard windows.indices.contains(selectedIndex) else { return }
         let selected = windows[selectedIndex]
+        lastActivatedWindow = selected
+        lastActivatedAt = CACurrentMediaTime()
+        promoteRecentActivationIfNeeded(in: &cachedWindows)
         WindowActivator.activate(selected)
         model.lastAction = "Switched to \(selected.displayTitle)"
         Log.action.info("Window switcher activated \(selected.displayTitle, privacy: .public)")
@@ -236,7 +243,36 @@ final class AltTabController {
             overlayHost.prepareWindowSwitcherCache(windows: cachedWindows)
             model.altTabWindowCount = cachedWindows.count
         }
+        promoteRecentActivationIfNeeded(in: &cachedWindows)
         return cachedWindows
+    }
+
+    private func skipCurrentWindowIfNeeded(reverse: Bool) {
+        guard windows.count > 1,
+              let recent = lastActivatedWindow,
+              CACurrentMediaTime() - lastActivatedAt < 1.25,
+              windows.indices.contains(selectedIndex),
+              windows[selectedIndex].windowID == recent.windowID else {
+            return
+        }
+        selectedIndex = AltTabSelection.advance(
+            index: selectedIndex,
+            count: windows.count,
+            reverse: reverse
+        )
+    }
+
+    private func promoteRecentActivationIfNeeded(in windows: inout [AltTabWindow]) {
+        guard let recent = lastActivatedWindow,
+              CACurrentMediaTime() - lastActivatedAt < 1.25 else {
+            return
+        }
+        guard let index = windows.firstIndex(where: { $0.windowID == recent.windowID }) else {
+            return
+        }
+        guard index != 0 else { return }
+        let window = windows.remove(at: index)
+        windows.insert(window, at: 0)
     }
 
     private func refreshWindowCatalog(updateOpenOverlay: Bool) {
@@ -273,26 +309,28 @@ final class AltTabController {
     }
 
     private func applyCatalog(_ scanned: [AltTabWindow], updateOpenOverlay: Bool) {
-        cachedWindows = scanned
-        overlayHost.prepareWindowSwitcherCache(windows: scanned)
-        model.altTabWindowCount = scanned.count
+        var adjusted = scanned
+        promoteRecentActivationIfNeeded(in: &adjusted)
+        cachedWindows = adjusted
+        overlayHost.prepareWindowSwitcherCache(windows: adjusted)
+        model.altTabWindowCount = adjusted.count
 
         guard updateOpenOverlay, isPresenting else { return }
         let selectedWindowID = windows.indices.contains(selectedIndex)
             ? windows[selectedIndex].windowID
             : nil
 
-        guard !scanned.isEmpty else {
+        guard !adjusted.isEmpty else {
             cancel()
             return
         }
 
-        windows = scanned
+        windows = adjusted
         if let selectedWindowID,
-           let newIndex = scanned.firstIndex(where: { $0.windowID == selectedWindowID }) {
+           let newIndex = adjusted.firstIndex(where: { $0.windowID == selectedWindowID }) {
             selectedIndex = newIndex
         } else {
-            selectedIndex = min(selectedIndex, scanned.count - 1)
+            selectedIndex = min(selectedIndex, adjusted.count - 1)
         }
 
         overlayHost.updateWindowSwitcher(
@@ -322,8 +360,15 @@ final class AltTabController {
             NSWorkspace.activeSpaceDidChangeNotification
         ]
         for name in workspaceNames {
-            let token = workspaceCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                self?.refreshWindowCatalog(updateOpenOverlay: true)
+            let token = workspaceCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                guard let self else { return }
+                if name == NSWorkspace.didActivateApplicationNotification,
+                   let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                   app.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+                   app.processIdentifier != self.lastActivatedWindow?.pid {
+                    self.lastActivatedWindow = nil
+                }
+                self.refreshWindowCatalog(updateOpenOverlay: true)
             }
             workspaceObservers.append(token)
         }

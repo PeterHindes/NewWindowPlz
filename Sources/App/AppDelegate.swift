@@ -20,15 +20,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var healthTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private var lastPermissionState = false
+    private var launchedAtLogin = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        detectLaunchReason()
 
         if handleOverlayPreviewIfRequested() {
             return
         }
 
         if handleAltTabPreviewIfRequested() {
+            return
+        }
+
+        if handleDocsPreviewIfRequested() {
             return
         }
 
@@ -103,10 +109,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        let skipOnboarding = CommandLine.arguments.contains("--no-onboarding")
-        if !skipOnboarding && !settings.hasCompletedOnboarding {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
-                self?.showOnboarding()
+        let suppressAutomaticWindow =
+            CommandLine.arguments.contains("--no-onboarding") ||
+            CommandLine.arguments.contains("--demo-overlay")
+        if !launchedAtLogin && !suppressAutomaticWindow {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                guard let self else { return }
+                if self.settings.hasCompletedOnboarding {
+                    self.showSettings()
+                } else {
+                    self.showOnboarding()
+                }
             }
         }
     }
@@ -122,6 +135,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showSettings()
         return true
+    }
+
+    private func detectLaunchReason() {
+        // SMAppService launches the main app with a kAEOpenApplication event
+        // carrying keyAEPropData == keyAELaunchedAsLogInItem.
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        let loginItemLaunch =
+            event?.eventID == 0x6F617070 && // 'oapp'
+            event?.paramDescriptor(forKeyword: 0x70726F70)?.enumCodeValue == 0x6C676974 // 'lgit'
+        launchedAtLogin = loginItemLaunch || CommandLine.arguments.contains("--simulate-login-launch")
+        Log.app.info("Launch detected: loginItem=\(self.launchedAtLogin, privacy: .public)")
     }
 
     private func observeSettings() {
@@ -374,7 +398,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.orderFrontStandardAboutPanel(options: [
             .credits: credits,
             .applicationName: "New Window Plz",
-            .applicationVersion: "1.2"
+            .applicationVersion: "1.2.2"
         ])
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -700,6 +724,110 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(0)
         } catch {
             fputs("Alt-Tab preview failed: \(error.localizedDescription)\n", stderr)
+            exit(1)
+        }
+    }
+
+    private func handleDocsPreviewIfRequested() -> Bool {
+        let arguments = CommandLine.arguments
+        guard let flagIndex = arguments.firstIndex(of: "--docs-preview"),
+              arguments.indices.contains(flagIndex + 1) else {
+            return false
+        }
+
+        let outputURL = URL(fileURLWithPath: arguments[flagIndex + 1])
+        let slide = arguments.contains("--slide")
+        let assetsDirectory: URL?
+
+        if let assetsIndex = arguments.firstIndex(of: "--assets"),
+           arguments.indices.contains(assetsIndex + 1) {
+            assetsDirectory = URL(fileURLWithPath: arguments[assetsIndex + 1], isDirectory: true)
+        } else {
+            assetsDirectory = nil
+        }
+
+        do {
+            guard let device = MTLCreateSystemDefaultDevice() else {
+                throw OverlayRendererError.commandQueue
+            }
+
+            let titles = ["Overview", "Typography", "Layout", "Motion", "Color", "Details", "System", "Notes"]
+            let previewPID = NSRunningApplication
+                .runningApplications(withBundleIdentifier: "com.apple.Preview")
+                .first?
+                .processIdentifier ?? 0
+
+            var images: [(CGImage, String)] = []
+
+            if let assetsDirectory {
+                let files = (try? FileManager.default.contentsOfDirectory(
+                    at: assetsDirectory,
+                    includingPropertiesForKeys: nil
+                ))?
+                    .filter { $0.pathExtension.lowercased() == "png" }
+                    .sorted { $0.lastPathComponent < $1.lastPathComponent } ?? []
+                guard files.count >= 5 else {
+                    throw OverlayRendererError.previewEncoding
+                }
+                for (index, file) in files.prefix(8).enumerated() {
+                    guard let source = CGImageSourceCreateWithURL(file as CFURL, nil),
+                          let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+                        continue
+                    }
+                    images.append((image, titles[index % titles.count]))
+                }
+            } else {
+                let previewWindows = CurrentSpaceWindows.snapshot().filter {
+                    $0.bundleIdentifier == "com.apple.Preview" || $0.appName == "Preview"
+                }
+                for (index, window) in previewWindows.prefix(8).enumerated() {
+                    guard let image = WindowSnapshotService.captureImage(windowID: window.windowID) else {
+                        continue
+                    }
+                    images.append((image, titles[index % titles.count]))
+                }
+            }
+
+            guard images.count >= 5 else {
+                throw OverlayRendererError.previewEncoding
+            }
+
+            let windows = images.enumerated().map { index, entry in
+                AltTabWindow(
+                    windowID: CGWindowID(9000 + index),
+                    pid: previewPID,
+                    bundleIdentifier: "com.apple.Preview",
+                    appName: "Preview",
+                    windowTitle: entry.1,
+                    isHidden: false
+                )
+            }
+
+            let renderer = try OverlayRenderer(device: device)
+            renderer.prepareWindowSwitcherCache(for: windows)
+            for (window, entry) in zip(windows, images) {
+                renderer.cacheWindowSnapshot(windowID: window.windowID, image: entry.0)
+            }
+
+            let selectedIndex = slide ? 5 : 1
+            let previousIndex = slide ? 4 : nil
+            let transitionStart = slide ? (1.35 - 0.06) : nil
+            try renderer.writePreview(
+                to: outputURL,
+                pointSize: CGSize(width: 1280, height: 820),
+                scale: 2,
+                scene: .appSwitcher(AltTabScene(
+                    windows: windows,
+                    selectedIndex: selectedIndex,
+                    showSnapshots: true,
+                    previousSelectedIndex: previousIndex,
+                    selectionTransitionStart: transitionStart
+                ))
+            )
+            print("Wrote docs preview to \(outputURL.path)")
+            exit(0)
+        } catch {
+            fputs("Docs preview failed: \(error.localizedDescription)\n", stderr)
             exit(1)
         }
     }

@@ -7,7 +7,7 @@ A tiny macOS menu-bar app with two jobs:
 
 Both use one resident Metal surface. There is no window creation, SwiftUI evaluation, or GPU wait on the reveal path. Window snapshots are optional and are captured asynchronously after the switcher is already visible.
 
-![The Option-Tab Metal window switcher](docs/alttab-preview.png)
+![The Option-Tab Metal window switcher with live window snapshots](docs/alttab-snapshots.png)
 
 ## Behavior
 
@@ -52,6 +52,12 @@ Enable **Window switcher → Show window snapshots** in Settings (or from the st
 - a pixel-accurate rounded selection outline
 - a horizontal slide when crossing a page boundary, so the next window visibly enters from the right instead of the row jumping
 
+![Live window snapshot cards](docs/alttab-snapshots.png)
+
+![Crossing a page boundary — the outgoing and incoming cards are both visible mid-slide](docs/alttab-snapshots-slide.png)
+
+The documentation images use sample window content; the app captures the real windows on your Mac.
+
 Snapshots require **Screen Recording** permission because macOS protects window contents. Captures are requested only for visible cards, run on a background queue, and populate the cards after the switcher has already opened. The reveal path never waits for a capture.
 
 If snapshots remain blank after granting Screen Recording, relaunch the app. The toggle can stay enabled and the switcher falls back to icons until permission is active.
@@ -84,6 +90,11 @@ Accessibility is used to read the Dock, trigger the target app's own New Window 
 
 If System Settings shows a stale checked **New Window Plz** entry but the welcome screen still says permission is needed, remove the stale entry with **–**, add the current app with **+**, toggle it on, and relaunch. The app is ad-hoc signed locally, so a rebuild produces a new code identity.
 
+### Launch behavior
+
+- Opening New Window Plz from Finder, Launchpad, or `/Applications` opens Settings.
+- A launch triggered by **Open at Login** stays windowless; only the menu-bar item appears. This is detected from the standard `kAEOpenApplication` / `keyAEPropData = keyAELaunchedAsLogInItem` launch event.
+
 ## Why the overlays are fast
 
 Most overlay utilities construct a view or window when invoked, then wait for layout, WindowServer ordering, and a first frame. This app is built around the opposite constraint:
@@ -102,14 +113,14 @@ Measured on this M1 Max:
 
 ```text
 OVERLAY_BENCHMARK  reveal_median_us=139.0      (demo overlay)
-SWITCHER_BENCHMARK reveal_median_us=206.9      (7-window switcher)
-                   warm_end_to_end_median_us=433.7
-                   cold_scan_us=26439.0
+SWITCHER_BENCHMARK reveal_median_us=146.4      (7-window switcher)
+                   warm_end_to_end_median_us=228.3
+                   cold_scan_us=35328.4
 ```
 
-That is **~0.21 ms to reveal a cached window list** and **~0.43 ms end-to-end** with window enumeration served from cache. The one-time cold scan (first use, or whenever the window cache is empty) is ~26 ms and happens before the cached path is ready. The actual pixels appear on the next display refresh (8.3 ms at 120 Hz), the physical lower bound for a compositor overlay.
+That is **~0.15–0.21 ms to reveal a cached window list** and **~0.23–0.43 ms end-to-end** with window enumeration served from cache. The one-time cold scan (first use, or whenever the window cache is empty) is ~24–35 ms and happens before the cached path is ready. The actual pixels appear on the next display refresh (8.3 ms at 120 Hz), the physical lower bound for a compositor overlay.
 
-The 1.2 release was exercised end-to-end on this Mac: current-Space window enumeration, exact window raising, live window snapshots, and the page-slide animation all work.
+The 1.2.2 release was exercised end-to-end on this Mac: current-Space window enumeration, single-window raising, rapid repeated ⌥Tab, live window snapshots, and the page-slide animation all work.
 
 Run the benchmarks yourself:
 
@@ -124,7 +135,7 @@ The Settings window reports **Open** and **Switch prep** timings after you click
 
 DockDoor was a useful reference for two Dock API details: the Dock's `AXSelectedChildren` gives the hovered item (including magnification), and modern application tiles expose `AXURL`, which resolves an exact bundle instead of matching by title. This app uses that approach for Dock clicks and then diverges deliberately for overlays: there is no SwiftUI/window construction at reveal time. One resident Metal surface hosts the current-Space window switcher and the renderer test.
 
-DockDoor is GPLv3. No DockDoor source code was copied; it was used as a behavioural/API reference.
+The precise single-window activation uses the same SkyLight front-process/key-window technique DockDoor uses, reimplemented in this project with a standard-activation fallback. DockDoor is GPLv3. No DockDoor source code was copied; it was used as a behavioural/API reference.
 
 ## How the window switcher works
 
@@ -132,8 +143,9 @@ DockDoor is GPLv3. No DockDoor source code was copied; it was used as a behaviou
 2. **⌥Tab** is consumed before the focused app sees it. The controller takes the cached current-Space window list and reveals the prewarmed overlay.
 3. The list comes from `CGWindowListCopyWindowInfo` with `.optionOnScreenOnly`, filtered to normal application windows and the active Space. The background catalog refreshes on app activation, app launch/termination, Space changes, and a 1.5-second fallback timer.
 4. Repeated Tab and arrow presses update only the selected index; the renderer redraws the cached app-icon and window-title textures.
-5. Releasing Option commits. The overlay is hidden at `alpha 0`, the app is unhidden if needed, and the exact window is raised via Accessibility. The Option key-up is passed through so the underlying app's modifier state stays balanced.
-6. Escape cancels; Return commits immediately. While the switcher is modal, unrelated keystrokes are swallowed rather than leaking into the app underneath.
+5. Releasing Option commits. The overlay is hidden at `alpha 0`, and the exact window is focused via a SkyLight front-process/key-window event followed by `AXRaise`. This avoids bringing the app's entire window group forward. Standard activation is only a last-resort fallback. The Option key-up is passed through so the underlying app's modifier state stays balanced.
+6. The just-activated window is treated as current on the next invocation. Even a near-instant second ⌥Tab cannot select the window already on screen; the next window is selected instead.
+7. Escape cancels; Return commits immediately. While the switcher is modal, unrelated keystrokes are swallowed rather than leaking into the app underneath.
 
 Snapshot mode uses the same flow. The visible window IDs are handed to a background capture service; completed images become Metal textures and the card is redrawn. The card placeholders are shown until captures arrive.
 

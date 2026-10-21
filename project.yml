@@ -34,8 +34,8 @@ targets:
       properties:
         CFBundleDisplayName: New Window Plz
         CFBundleIconName: AppIcon
-        CFBundleShortVersionString: "1.2"
-        CFBundleVersion: "3"
+        CFBundleShortVersionString: "1.2.2"
+        CFBundleVersion: "5"
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: "14.0"
         LSMultipleInstancesProhibited: true

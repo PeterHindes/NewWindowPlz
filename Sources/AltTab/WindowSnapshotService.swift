@@ -51,14 +51,14 @@ final class WindowSnapshotService {
             self.inFlight.insert(windowID)
             defer { self.inFlight.remove(windowID) }
 
-            guard let image = self.capture(windowID: windowID) else { return }
+            guard let image = Self.captureImage(windowID: windowID) else { return }
             DispatchQueue.main.async { [weak self] in
                 self?.onImage?(windowID, image)
             }
         }
     }
 
-    private func capture(windowID: CGWindowID) -> CGImage? {
+    static func captureImage(windowID: CGWindowID) -> CGImage? {
         guard let source = CGWindowListCreateImage(
             .null,
             .optionIncludingWindow,

@@ -206,7 +206,7 @@ struct SettingsView: View {
                 }
 
                 HStack {
-                    Text("New Window Plz 1.2")
+                    Text("New Window Plz 1.2.2")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                     Spacer()
