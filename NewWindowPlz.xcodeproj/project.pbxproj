@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		008460F3B9503DC4E01D3BF6 /* ControlClickFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF65CB0A867F1AD56ECECC7 /* ControlClickFilter.swift */; };
 		071F4E4E005FED941FDEFCEB /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B4E4A3BBC56BD6016E4E5A /* StatusBarController.swift */; };
 		0E2C3AD6E053853486074978 /* DockGeometryCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 638DA0E16FF14414EC0EAAB3 /* DockGeometryCache.swift */; };
 		113B9ACBB87537A1258A5C6C /* AltTabController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C743B8FD02E08FF1329E5C /* AltTabController.swift */; };
@@ -16,9 +17,11 @@
 		25ED04DBCDD47B2E7FF18E08 /* OverlayShaders.metal.txt in Resources */ = {isa = PBXBuildFile; fileRef = D4241E1C1D1B6E65AAA76C88 /* OverlayShaders.metal.txt */; };
 		354CA02A525DB116C43E9741 /* WindowControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EB39F548F56EFC44516773 /* WindowControllers.swift */; };
 		39B1C540E3D90CD07F381977 /* LoginItemManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2834C0BA177FC2FB1C0E58E5 /* LoginItemManager.swift */; };
+		4060009D50F860F08C74766D /* SpaceMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = F67F54AD7217C63D3BBA7535 /* SpaceMetadata.swift */; };
 		46320DB87CEFACF42212183C /* AXSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43F487567FCDE15445765D17 /* AXSupport.swift */; };
 		4BE605DB62A1E9892DDFB5CE /* DockEventTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27F01FCFC2EA9BBCA51AE21 /* DockEventTap.swift */; };
 		5339620ABF4838BCD1A7A2F3 /* AltTabTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78CB73E215EAC9DFCA3DA210 /* AltTabTypes.swift */; };
+		591F7663283F1FF9EA292063 /* SpaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31ED368D26F8876EBBC5CCC8 /* SpaceController.swift */; };
 		5BB7B9FF4E37DD81C386EA57 /* MetalOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5290B6552044776B9EE06F /* MetalOverlayView.swift */; };
 		5E6CC5A2441D2722645E5C79 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C5A4F6FE1FF4BDC4C79A0C /* AppSettings.swift */; };
 		5FEE06AD7BB9C3E1D0355474 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1977F9EC3DD72A02EA173B33 /* SettingsView.swift */; };
@@ -28,8 +31,11 @@
 		88436B26DF83F18213BDAD43 /* DockTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA5362A2E16D643A0461E8EA /* DockTile.swift */; };
 		99FB1AE7232293EE1FB9B758 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DE7CF49033D38520822A34E /* main.swift */; };
 		A27B11BE06203B85F9F655E7 /* RunningApplicationResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536E40917DA47CA0BBA9D66C /* RunningApplicationResolver.swift */; };
+		A5043DD7C2C5E98E4EF17F2A /* AppRulesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894548C45C47AC9441B871B4 /* AppRulesStore.swift */; };
 		A720B5D1E3ADADA964C45074 /* ScreenEdgeProximity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB918CAAEAC74C715FF3D6CE /* ScreenEdgeProximity.swift */; };
+		B1614BAD428D37FE13F81FA2 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EB96492710AC046221AA298 /* AppVersion.swift */; };
 		B169BDD97EC8FBF9A38C3CE1 /* OverlayRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D56F71452BDAE4493D79E40 /* OverlayRendererTests.swift */; };
+		B7B3C2B0651D9CF13ABB61EE /* WindowMover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16E37E560695C7E8553102B2 /* WindowMover.swift */; };
 		B9EBDC8BF53D07CED1B517E8 /* DockSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F258CF603816AB5354F292 /* DockSnapshotTests.swift */; };
 		BBBF407F87AE3670686892F4 /* DockInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29A0037D524D5AFD58559F39 /* DockInspector.swift */; };
 		BCE41D45F4ED2F0A5F4F5E77 /* MenuScoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F4E6022866538ADA1345E1 /* MenuScoringTests.swift */; };
@@ -39,13 +45,17 @@
 		D31DC45C59FBD34BD1F25344 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509AB00F1AA4586DC17D520E /* Log.swift */; };
 		D378226521A27622DA6249DB /* WindowSnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89182E5C0E08F68DE1E331E1 /* WindowSnapshotService.swift */; };
 		D48C839CDFF8302189160452 /* AccessibilityPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55CCFFD65740378EC2E63628 /* AccessibilityPermission.swift */; };
+		D5CC3DE3D2C5E9030E24224A /* SpaceSwitchPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A67A2BE5E2868F86F0D26FF0 /* SpaceSwitchPlanTests.swift */; };
 		D9C45B7E1D8F866D8E3A6ECD /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ADDB1EDB97075F88B316DE1 /* OnboardingView.swift */; };
 		DCEAB85FF788E4832E486451 /* OverlayHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6733C1B3E7E712CBA89B79AC /* OverlayHost.swift */; };
 		E3E8A936D4718FDB84D1DC34 /* AltTabEventTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF1D5A24B0C4E716ACA373F /* AltTabEventTap.swift */; };
 		EEFBA408CFC1CBBC5B7F5D19 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15675D96C53ABA2217B7CB5 /* AppModel.swift */; };
+		F1A4C690A3E35E9A9BE63E2A /* WindowSpaceMove.c in Sources */ = {isa = PBXBuildFile; fileRef = 0A5D7E6788DA4B48DDB76A1B /* WindowSpaceMove.c */; };
 		F3886216D2CD07446E6B7A82 /* DockClickPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827BE98E0996473C81110D3E /* DockClickPolicy.swift */; };
+		F7D5306C513BA523DE2DB448 /* DockAppPickerHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = B209AE51C388A57D565063D8 /* DockAppPickerHUD.swift */; };
 		FA3E903A1A4AEC81F555DF44 /* NewWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F0910D9F260B1EFBFDB246 /* NewWindowController.swift */; };
 		FB1CB241CC206CF9C127BCEC /* OverlayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A566F25F924DF68DC2DDE8EE /* OverlayPanel.swift */; };
+		FC5C41B09B0FBC548E12611C /* SpaceSwipeGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE958E807106BB6374BCA24C /* SpaceSwipeGesture.swift */; };
 		FF74BBAA5948D11194B0D4EB /* OverlayRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E5541EA0554ADA00211425 /* OverlayRenderer.swift */; };
 /* End PBXBuildFile section */
 
@@ -60,14 +70,18 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0A5D7E6788DA4B48DDB76A1B /* WindowSpaceMove.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = WindowSpaceMove.c; sourceTree = "<group>"; };
 		0ADDB1EDB97075F88B316DE1 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		16E37E560695C7E8553102B2 /* WindowMover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMover.swift; sourceTree = "<group>"; };
 		1977F9EC3DD72A02EA173B33 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1B5290B6552044776B9EE06F /* MetalOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalOverlayView.swift; sourceTree = "<group>"; };
 		2834C0BA177FC2FB1C0E58E5 /* LoginItemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItemManager.swift; sourceTree = "<group>"; };
 		29A0037D524D5AFD58559F39 /* DockInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockInspector.swift; sourceTree = "<group>"; };
 		2B020A67BE05C6B75300EEBA /* DockSystemApps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockSystemApps.swift; sourceTree = "<group>"; };
+		31ED368D26F8876EBBC5CCC8 /* SpaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceController.swift; sourceTree = "<group>"; };
 		31F4E6022866538ADA1345E1 /* MenuScoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuScoringTests.swift; sourceTree = "<group>"; };
 		35F0910D9F260B1EFBFDB246 /* NewWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewWindowController.swift; sourceTree = "<group>"; };
+		3EB96492710AC046221AA298 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 		43F487567FCDE15445765D17 /* AXSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXSupport.swift; sourceTree = "<group>"; };
 		44B4E4A3BBC56BD6016E4E5A /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		509AB00F1AA4586DC17D520E /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
@@ -78,8 +92,10 @@
 		65E5541EA0554ADA00211425 /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
 		6733C1B3E7E712CBA89B79AC /* OverlayHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayHost.swift; sourceTree = "<group>"; };
 		67607076173FD54A26F1F89E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		6AF65CB0A867F1AD56ECECC7 /* ControlClickFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlClickFilter.swift; sourceTree = "<group>"; };
 		6C1DBA1A83634FD282FDCF08 /* CurrentSpaceWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentSpaceWindows.swift; sourceTree = "<group>"; };
 		6DE7CF49033D38520822A34E /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		74CAA00967930628E48A640C /* WindowSpaceMove.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WindowSpaceMove.h; sourceTree = "<group>"; };
 		76EB39F548F56EFC44516773 /* WindowControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowControllers.swift; sourceTree = "<group>"; };
 		78CB73E215EAC9DFCA3DA210 /* AltTabTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AltTabTypes.swift; sourceTree = "<group>"; };
 		7A1523FA9E49945BAB684C19 /* NewWindowPlzTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NewWindowPlzTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -88,20 +104,25 @@
 		81C743B8FD02E08FF1329E5C /* AltTabController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AltTabController.swift; sourceTree = "<group>"; };
 		827BE98E0996473C81110D3E /* DockClickPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockClickPolicy.swift; sourceTree = "<group>"; };
 		89182E5C0E08F68DE1E331E1 /* WindowSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowSnapshotService.swift; sourceTree = "<group>"; };
+		894548C45C47AC9441B871B4 /* AppRulesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRulesStore.swift; sourceTree = "<group>"; };
 		9D56F71452BDAE4493D79E40 /* OverlayRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRendererTests.swift; sourceTree = "<group>"; };
 		A1F258CF603816AB5354F292 /* DockSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockSnapshotTests.swift; sourceTree = "<group>"; };
 		A566F25F924DF68DC2DDE8EE /* OverlayPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanel.swift; sourceTree = "<group>"; };
 		A6155B5517944906219A9EE9 /* NewWindowMenuResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewWindowMenuResolver.swift; sourceTree = "<group>"; };
+		A67A2BE5E2868F86F0D26FF0 /* SpaceSwitchPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitchPlanTests.swift; sourceTree = "<group>"; };
 		A7AF70FDA83DCD767974E623 /* WindowActivator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowActivator.swift; sourceTree = "<group>"; };
 		B15675D96C53ABA2217B7CB5 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		B1C5A4F6FE1FF4BDC4C79A0C /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		B209AE51C388A57D565063D8 /* DockAppPickerHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockAppPickerHUD.swift; sourceTree = "<group>"; };
 		BB918CAAEAC74C715FF3D6CE /* ScreenEdgeProximity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenEdgeProximity.swift; sourceTree = "<group>"; };
+		BE958E807106BB6374BCA24C /* SpaceSwipeGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwipeGesture.swift; sourceTree = "<group>"; };
 		D4241E1C1D1B6E65AAA76C88 /* OverlayShaders.metal.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OverlayShaders.metal.txt; sourceTree = "<group>"; };
 		DA5362A2E16D643A0461E8EA /* DockTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockTile.swift; sourceTree = "<group>"; };
 		DBF1D5A24B0C4E716ACA373F /* AltTabEventTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AltTabEventTap.swift; sourceTree = "<group>"; };
 		E109D133D781280EE88CE389 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		ECB693FC955678CFE165A107 /* NewWindowPlz.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NewWindowPlz.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F27F01FCFC2EA9BBCA51AE21 /* DockEventTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockEventTap.swift; sourceTree = "<group>"; };
+		F67F54AD7217C63D3BBA7535 /* SpaceMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceMetadata.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -121,7 +142,9 @@
 		3696A7997547E01ACB14D3F9 /* Dock */ = {
 			isa = PBXGroup;
 			children = (
+				894548C45C47AC9441B871B4 /* AppRulesStore.swift */,
 				43F487567FCDE15445765D17 /* AXSupport.swift */,
+				6AF65CB0A867F1AD56ECECC7 /* ControlClickFilter.swift */,
 				8074DF42D66D91BD2291D5FD /* DockClickController.swift */,
 				827BE98E0996473C81110D3E /* DockClickPolicy.swift */,
 				F27F01FCFC2EA9BBCA51AE21 /* DockEventTap.swift */,
@@ -145,6 +168,7 @@
 				A1F258CF603816AB5354F292 /* DockSnapshotTests.swift */,
 				31F4E6022866538ADA1345E1 /* MenuScoringTests.swift */,
 				9D56F71452BDAE4493D79E40 /* OverlayRendererTests.swift */,
+				A67A2BE5E2868F86F0D26FF0 /* SpaceSwitchPlanTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -163,6 +187,7 @@
 			isa = PBXGroup;
 			children = (
 				67607076173FD54A26F1F89E /* AppDelegate.swift */,
+				B209AE51C388A57D565063D8 /* DockAppPickerHUD.swift */,
 				44B4E4A3BBC56BD6016E4E5A /* StatusBarController.swift */,
 			);
 			path = App;
@@ -188,12 +213,26 @@
 			path = Overlay;
 			sourceTree = "<group>";
 		};
+		90B0E12DDC510F3DD106837E /* Spaces */ = {
+			isa = PBXGroup;
+			children = (
+				31ED368D26F8876EBBC5CCC8 /* SpaceController.swift */,
+				F67F54AD7217C63D3BBA7535 /* SpaceMetadata.swift */,
+				BE958E807106BB6374BCA24C /* SpaceSwipeGesture.swift */,
+				16E37E560695C7E8553102B2 /* WindowMover.swift */,
+				0A5D7E6788DA4B48DDB76A1B /* WindowSpaceMove.c */,
+				74CAA00967930628E48A640C /* WindowSpaceMove.h */,
+			);
+			path = Spaces;
+			sourceTree = "<group>";
+		};
 		9CC1FD966D68492FADE05952 /* Core */ = {
 			isa = PBXGroup;
 			children = (
 				55CCFFD65740378EC2E63628 /* AccessibilityPermission.swift */,
 				B15675D96C53ABA2217B7CB5 /* AppModel.swift */,
 				B1C5A4F6FE1FF4BDC4C79A0C /* AppSettings.swift */,
+				3EB96492710AC046221AA298 /* AppVersion.swift */,
 				509AB00F1AA4586DC17D520E /* Log.swift */,
 				2834C0BA177FC2FB1C0E58E5 /* LoginItemManager.swift */,
 			);
@@ -219,6 +258,7 @@
 				9CC1FD966D68492FADE05952 /* Core */,
 				3696A7997547E01ACB14D3F9 /* Dock */,
 				877024CA11FE9119324EA9D1 /* Overlay */,
+				90B0E12DDC510F3DD106837E /* Spaces */,
 				6FC9C8290FE95E17AFEE89C9 /* UI */,
 			);
 			path = Sources;
@@ -333,6 +373,7 @@
 				B9EBDC8BF53D07CED1B517E8 /* DockSnapshotTests.swift in Sources */,
 				BCE41D45F4ED2F0A5F4F5E77 /* MenuScoringTests.swift in Sources */,
 				B169BDD97EC8FBF9A38C3CE1 /* OverlayRendererTests.swift in Sources */,
+				D5CC3DE3D2C5E9030E24224A /* SpaceSwitchPlanTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -347,8 +388,12 @@
 				5339620ABF4838BCD1A7A2F3 /* AltTabTypes.swift in Sources */,
 				17DD696A3A6D6F199673037F /* AppDelegate.swift in Sources */,
 				EEFBA408CFC1CBBC5B7F5D19 /* AppModel.swift in Sources */,
+				A5043DD7C2C5E98E4EF17F2A /* AppRulesStore.swift in Sources */,
 				5E6CC5A2441D2722645E5C79 /* AppSettings.swift in Sources */,
+				B1614BAD428D37FE13F81FA2 /* AppVersion.swift in Sources */,
+				008460F3B9503DC4E01D3BF6 /* ControlClickFilter.swift in Sources */,
 				C08B68C67F75F5555851E075 /* CurrentSpaceWindows.swift in Sources */,
+				F7D5306C513BA523DE2DB448 /* DockAppPickerHUD.swift in Sources */,
 				1C089469022AA97A63C386A6 /* DockClickController.swift in Sources */,
 				F3886216D2CD07446E6B7A82 /* DockClickPolicy.swift in Sources */,
 				4BE605DB62A1E9892DDFB5CE /* DockEventTap.swift in Sources */,
@@ -368,10 +413,15 @@
 				A27B11BE06203B85F9F655E7 /* RunningApplicationResolver.swift in Sources */,
 				A720B5D1E3ADADA964C45074 /* ScreenEdgeProximity.swift in Sources */,
 				5FEE06AD7BB9C3E1D0355474 /* SettingsView.swift in Sources */,
+				591F7663283F1FF9EA292063 /* SpaceController.swift in Sources */,
+				4060009D50F860F08C74766D /* SpaceMetadata.swift in Sources */,
+				FC5C41B09B0FBC548E12611C /* SpaceSwipeGesture.swift in Sources */,
 				071F4E4E005FED941FDEFCEB /* StatusBarController.swift in Sources */,
 				D00193192554943D758DA35A /* WindowActivator.swift in Sources */,
 				354CA02A525DB116C43E9741 /* WindowControllers.swift in Sources */,
+				B7B3C2B0651D9CF13ABB61EE /* WindowMover.swift in Sources */,
 				D378226521A27622DA6249DB /* WindowSnapshotService.swift in Sources */,
+				F1A4C690A3E35E9A9BE63E2A /* WindowSpaceMove.c in Sources */,
 				99FB1AE7232293EE1FB9B758 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -395,10 +445,19 @@
 				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_PREVIEWS = NO;
 				ENABLE_TESTABILITY = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/System/Library/PrivateFrameworks,
+				);
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					SkyLight,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.peter.newwindowplz;
 				PRODUCT_NAME = NewWindowPlz;
@@ -585,10 +644,19 @@
 				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_PREVIEWS = NO;
 				ENABLE_TESTABILITY = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/System/Library/PrivateFrameworks,
+				);
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					SkyLight,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.peter.newwindowplz;
 				PRODUCT_NAME = NewWindowPlz;

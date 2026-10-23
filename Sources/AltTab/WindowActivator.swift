@@ -70,6 +70,73 @@ enum WindowActivator {
         }
     }
 
+    private static func windowElement(windowID: CGWindowID, pid: pid_t) -> AXUIElement? {
+        let appElement = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(appElement, 0.25)
+        for element in AX.elements(appElement, kAXWindowsAttribute as String) {
+            var candidate: CGWindowID = 0
+            if AXUIElementGetWindow(element, &candidate) == .success, candidate == windowID {
+                return element
+            }
+        }
+        return nil
+    }
+
+    static func activate(windowID: CGWindowID, pid: pid_t) {
+        guard let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else {
+            return
+        }
+        let preciseFocus = SkyLight.focus(windowID: windowID, pid: pid)
+        if !preciseFocus && app.isHidden {
+            app.unhide()
+        }
+        DispatchQueue.global(qos: .userInteractive).asyncAfter(deadline: .now() + 0.03) {
+            var raised = false
+            if let element = windowElement(windowID: windowID, pid: pid) {
+                AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
+                raised = AXUIElementPerformAction(element, kAXRaiseAction as CFString) == .success
+            }
+            if !preciseFocus && !raised {
+                DispatchQueue.main.async {
+                    if app.isHidden { app.unhide() }
+                    app.activate(options: [.activateIgnoringOtherApps])
+                }
+            }
+        }
+    }
+
+    static func center(windowID: CGWindowID, pid: pid_t, on screen: NSScreen?) {
+        guard let screen,
+              let element = windowElement(windowID: windowID, pid: pid) else { return }
+
+        var sizeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue) == .success,
+              let sizeValue,
+              CFGetTypeID(sizeValue) == AXValueGetTypeID() else {
+            return
+        }
+        var size = CGSize.zero
+        guard AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else { return }
+
+        let visible = screen.visibleFrame
+        var newSize = CGSize(
+            width: max(200, min(size.width, visible.width - 40)),
+            height: max(150, min(size.height, visible.height - 40))
+        )
+        if let newSizeValue = AXValueCreate(.cgSize, &newSize) {
+            AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, newSizeValue)
+        }
+
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? visible.height
+        var point = CGPoint(
+            x: visible.midX - newSize.width * 0.5,
+            y: primaryHeight - visible.midY - newSize.height * 0.5
+        )
+        if let positionValue = AXValueCreate(.cgPoint, &point) {
+            AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, positionValue)
+        }
+    }
+
     static func activate(_ window: AltTabWindow) {
         guard let app = NSRunningApplication(processIdentifier: window.pid),
               !app.isTerminated else {

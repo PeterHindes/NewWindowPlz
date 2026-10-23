@@ -36,6 +36,7 @@ final class AppModel: ObservableObject {
     @Published var overlayFirstFrameMicroseconds: Double?
     @Published var overlayRendererDescription = "Starting…"
     @Published var lastAction = "No actions yet"
+    @Published var isPickingApp = false
     @Published var lastFailure: String?
     @Published var launchAtLogin = LoginItemManager.isEnabled
     @Published var loginItemError: String?

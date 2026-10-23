@@ -14,11 +14,12 @@ enum CurrentSpaceWindows {
 
         let ownBundleIdentifier = Bundle.main.bundleIdentifier
         let ownPID = ProcessInfo.processInfo.processIdentifier
-        let appsByPID = Dictionary(
-            uniqueKeysWithValues: NSWorkspace.shared.runningApplications.map {
-                ($0.processIdentifier, $0)
-            }
-        )
+        // NSWorkspace can briefly return two entries with the same PID while
+        // apps are launching/terminating. Never trap on that: last value wins.
+        var appsByPID: [pid_t: NSRunningApplication] = [:]
+        for app in NSWorkspace.shared.runningApplications {
+            appsByPID[app.processIdentifier] = app
+        }
 
         var seen = Set<CGWindowID>()
         var result: [AltTabWindow] = []

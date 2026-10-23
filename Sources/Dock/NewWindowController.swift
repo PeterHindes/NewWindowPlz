@@ -7,6 +7,7 @@ final class NewWindowController {
     private let queue = DispatchQueue(label: "com.peter.newwindowplz.new-window", qos: .userInitiated)
     private let resolver = NewWindowMenuResolver()
     private let model: AppModel
+    var onWillActivate: (() -> Void)?
 
     init(model: AppModel) {
         self.model = model
@@ -19,6 +20,9 @@ final class NewWindowController {
         queue.async { [weak self] in
             guard let self else { return }
             let start = CACurrentMediaTime()
+            DispatchQueue.main.sync { [weak self] in
+                self?.onWillActivate?()
+            }
 
             guard !application.isTerminated else {
                 self.reportFailure("\(name) quit before the window could open.")

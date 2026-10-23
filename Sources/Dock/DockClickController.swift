@@ -8,8 +8,12 @@ final class DockClickController {
     private let newWindowController: NewWindowController
     private let model: AppModel
     private let settings: AppSettings
+    private let rules: AppRulesStore
+    private let windowMover = WindowMover()
+    private let pickerHUD = DockAppPickerHUD()
 
     private let scanQueue = DispatchQueue(label: "com.peter.newwindowplz.dock-scan", qos: .utility)
+    private let actionQueue = DispatchQueue(label: "com.peter.newwindowplz.dock-action", qos: .userInitiated)
     private var scanTimer: DispatchSourceTimer?
     private var workspaceObservers: [NSObjectProtocol] = []
     private var localObservers: [NSObjectProtocol] = []
@@ -21,16 +25,25 @@ final class DockClickController {
          eventTap: DockEventTap,
          newWindowController: NewWindowController,
          model: AppModel,
-         settings: AppSettings) {
+         settings: AppSettings,
+         rules: AppRulesStore) {
         self.inspector = inspector
         self.geometryCache = geometryCache
         self.eventTap = eventTap
         self.newWindowController = newWindowController
         self.model = model
         self.settings = settings
+        self.rules = rules
 
-        eventTap.onOpenNewWindow = { [weak self] tile, pid in
-            self?.handleNewWindow(tile: tile, pid: pid)
+        eventTap.onDockAction = { [weak self] tile, pid, inverted in
+            self?.actionQueue.async {
+                self?.handleDockAction(tile: tile, pid: pid, inverted: inverted)
+            }
+        }
+        eventTap.onPickApp = { [weak self] tile in
+            DispatchQueue.main.async {
+                self?.handlePickedApp(tile)
+            }
         }
         eventTap.onTapRecovered = { [weak self] in
             DispatchQueue.main.async {
@@ -81,6 +94,7 @@ final class DockClickController {
     }
 
     func stop() {
+        cancelAppPicker()
         guard isMonitoring else {
             DispatchQueue.main.async {
                 self.model.monitoringActive = false
@@ -193,12 +207,78 @@ final class DockClickController {
         distributedObservers.removeAll()
     }
 
-    private func handleNewWindow(tile: DockTile, pid: pid_t) {
+    func toggleAppPicker() {
+        if model.isPickingApp {
+            cancelAppPicker()
+        } else {
+            startAppPicker()
+        }
+    }
+
+    func startAppPicker() {
+        guard !model.isPickingApp else { return }
+        guard model.monitoringActive else {
+            model.lastFailure = "Enable Dock clicks first, then pick an app."
+            return
+        }
+        model.isPickingApp = true
+        model.lastFailure = nil
+        model.lastAction = "Picker active — click a Dock app"
+        eventTap.setPickerActive(true)
+        pickerHUD.showInstruction()
+    }
+
+    func cancelAppPicker() {
+        guard model.isPickingApp else { return }
+        model.isPickingApp = false
+        eventTap.setPickerActive(false)
+        pickerHUD.hide()
+        model.lastAction = "App picker cancelled"
+    }
+
+    private func handlePickedApp(_ tile: DockTile) {
+        let result = rules.toggleOrAdd(
+            bundleIdentifier: tile.bundleIdentifier,
+            title: tile.title
+        )
+        eventTap.setPickerActive(false)
+        model.isPickingApp = false
+        pickerHUD.showConfirmation(name: result.rule.displayName, action: result.rule.action)
+        model.lastAction = "\(result.rule.displayName): \(result.rule.action.title)"
+    }
+
+    private func handleDockAction(tile: DockTile, pid: pid_t, inverted: Bool) {
         guard let application = NSRunningApplication(processIdentifier: pid),
               !application.isTerminated else {
             Log.dock.error("Running application disappeared before action: \(tile.title, privacy: .public)")
             return
         }
+
+        let configured = rules.action(for: tile.bundleIdentifier, title: tile.title)
+        let action = DockActionResolver.resolve(configured: configured, inverted: inverted)
+        let prefix = inverted ? "Control-click: " : ""
+
+        if action == .moveHere {
+            if windowMover.moveExistingWindowToCurrentScreen(application) {
+                DispatchQueue.main.async {
+                    self.model.lastAction = "\(prefix)Moved \(tile.title) here"
+                    self.model.lastFailure = nil
+                }
+                return
+            }
+            if windowMover.activateExistingWindow(of: application) {
+                DispatchQueue.main.async {
+                    self.model.lastFailure = "Couldn’t move \(tile.title) here; switched to its existing window instead."
+                }
+                Log.dock.error("Move-here failed for \(tile.title, privacy: .public); activated existing window.")
+                return
+            }
+            DispatchQueue.main.async {
+                self.model.lastFailure = "Couldn’t find a window for \(tile.title); opened a new one."
+            }
+            Log.dock.error("Move-here failed for \(tile.title, privacy: .public); falling back to new window.")
+        }
+
         newWindowController.openNewWindow(in: application, tile: tile)
     }
 }

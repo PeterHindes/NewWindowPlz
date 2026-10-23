@@ -15,9 +15,13 @@ final class DockEventTap {
     private var runLoop: CFRunLoop?
     private var tapThread: Thread?
     private var pending: PendingClick?
+    private var pendingPick: PendingPick?
+    private let pickerLock = NSLock()
+    private var pickerActive = false
     private(set) var isRunning = false
 
-    var onOpenNewWindow: ((DockTile, pid_t) -> Void)?
+    var onDockAction: ((DockTile, pid_t, Bool) -> Void)?
+    var onPickApp: ((DockTile) -> Void)?
     var onTapRecovered: (() -> Void)?
 
     private struct PendingClick {
@@ -25,7 +29,27 @@ final class DockEventTap {
         let pid: pid_t
         let point: CGPoint
         let startedAt: CFTimeInterval
+        let inverted: Bool
         var cancelled = false
+    }
+
+    private struct PendingPick {
+        let tile: DockTile
+        let point: CGPoint
+        let startedAt: CFTimeInterval
+        var cancelled = false
+    }
+
+    func setPickerActive(_ active: Bool) {
+        pickerLock.lock()
+        pickerActive = active
+        pickerLock.unlock()
+    }
+
+    private var isPickerActive: Bool {
+        pickerLock.lock()
+        defer { pickerLock.unlock() }
+        return pickerActive
     }
 
     init(inspector: DockInspector,
@@ -42,7 +66,10 @@ final class DockEventTap {
 
         let mask = CGEventMask(1) << CGEventType.leftMouseDown.rawValue |
             CGEventMask(1) << CGEventType.leftMouseDragged.rawValue |
-            CGEventMask(1) << CGEventType.leftMouseUp.rawValue
+            CGEventMask(1) << CGEventType.leftMouseUp.rawValue |
+            CGEventMask(1) << CGEventType.rightMouseDown.rawValue |
+            CGEventMask(1) << CGEventType.rightMouseDragged.rawValue |
+            CGEventMask(1) << CGEventType.rightMouseUp.rawValue
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -60,6 +87,7 @@ final class DockEventTap {
         self.tap = tap
         self.source = source
         self.pending = nil
+        self.pendingPick = nil
 
         let ready = DispatchSemaphore(value: 0)
         let thread = Thread { [weak self] in
@@ -104,6 +132,7 @@ final class DockEventTap {
         runLoop = nil
         tapThread = nil
         pending = nil
+        pendingPick = nil
         isRunning = false
         Log.dock.info("Dock event tap stopped.")
     }
@@ -117,6 +146,7 @@ final class DockEventTap {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             pending = nil
+            pendingPick = nil
             if let tap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
@@ -127,9 +157,21 @@ final class DockEventTap {
             return Unmanaged.passUnretained(event)
 
         case .leftMouseDown:
-            return handleMouseDown(event: event)
+            return handleMouseDown(event: event, isRight: false)
 
-        case .leftMouseDragged:
+        case .rightMouseDown:
+            return handleMouseDown(event: event, isRight: true)
+
+        case .leftMouseDragged, .rightMouseDragged:
+            if var pendingPick {
+                let dx = event.location.x - pendingPick.point.x
+                let dy = event.location.y - pendingPick.point.y
+                if (dx * dx + dy * dy) > 64 {
+                    pendingPick.cancelled = true
+                    self.pendingPick = pendingPick
+                }
+                return nil
+            }
             guard var pending else {
                 return Unmanaged.passUnretained(event)
             }
@@ -141,7 +183,7 @@ final class DockEventTap {
             }
             return nil
 
-        case .leftMouseUp:
+        case .leftMouseUp, .rightMouseUp:
             return handleMouseUp(event: event)
 
         default:
@@ -149,13 +191,26 @@ final class DockEventTap {
         }
     }
 
-    private func handleMouseDown(event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleMouseDown(event: CGEvent, isRight: Bool) -> Unmanaged<CGEvent>? {
         guard pending == nil else {
             pending = nil
             return Unmanaged.passUnretained(event)
         }
 
-        if !event.flags.intersection(DockClickPolicy.passThroughModifiers).isEmpty {
+        // With macOS's default Control-click conversion, the event arrives as
+        // a right mouse down and the Control flag may be gone. Check the live
+        // HID/session modifier state so default systems still invert.
+        let controlDown = controlIsDown(event: event)
+
+        if isRight, !controlDown {
+            return Unmanaged.passUnretained(event)
+        }
+
+        var effectiveFlags = event.flags
+        if controlDown {
+            effectiveFlags.insert(.maskControl)
+        }
+        if !effectiveFlags.intersection(DockClickPolicy.passThroughModifiers).isEmpty {
             return Unmanaged.passUnretained(event)
         }
 
@@ -184,10 +239,20 @@ final class DockEventTap {
             hitTile = snapshot.tile(at: point, slop: 2)
         }
 
+        if isPickerActive, !isRight, let hitTile {
+            pendingPick = PendingPick(
+                tile: hitTile,
+                point: point,
+                startedAt: CACurrentMediaTime()
+            )
+            Log.dock.debug("Picker intercepted Dock tile \(hitTile.title, privacy: .public).")
+            return nil
+        }
+
         if case .passThrough(let reason) = policy.decide(
             isEnabled: true,
             tile: hitTile,
-            modifiers: event.flags
+            modifiers: effectiveFlags
         ) {
             Log.dock.debug("Passing Dock click through (\(reason.rawValue, privacy: .public)).")
             return Unmanaged.passUnretained(event)
@@ -204,13 +269,47 @@ final class DockEventTap {
             tile: tile,
             pid: application.processIdentifier,
             point: point,
-            startedAt: CACurrentMediaTime()
+            startedAt: CACurrentMediaTime(),
+            inverted: controlDown
         )
         Log.dock.debug("Intercepted Dock click for \(tile.title, privacy: .public).")
         return nil
     }
 
+    private func controlIsDown(event: CGEvent) -> Bool {
+        if event.getIntegerValueField(.eventSourceUserData) == ControlClickFilter.controlStrippedMarker {
+            return true
+        }
+        if event.flags.contains(.maskControl) {
+            return true
+        }
+        if CGEventSource.flagsState(.hidSystemState).contains(.maskControl) {
+            return true
+        }
+        if CGEventSource.flagsState(.combinedSessionState).contains(.maskControl) {
+            return true
+        }
+        return NSEvent.modifierFlags.contains(.control)
+    }
+
     private func handleMouseUp(event: CGEvent) -> Unmanaged<CGEvent>? {
+        if let pendingPick {
+            self.pendingPick = nil
+            guard isPickerActive else {
+                return nil
+            }
+            let dx = event.location.x - pendingPick.point.x
+            let dy = event.location.y - pendingPick.point.y
+            let movedTooFar = (dx * dx + dy * dy) > 100
+            let tookTooLong = CACurrentMediaTime() - pendingPick.startedAt > 2.0
+            if !pendingPick.cancelled && !movedTooFar && !tookTooLong {
+                onPickApp?(pendingPick.tile)
+            } else {
+                Log.dock.debug("Dock app pick cancelled after movement/timeout.")
+            }
+            return nil
+        }
+
         guard let pending else {
             return Unmanaged.passUnretained(event)
         }
@@ -222,7 +321,7 @@ final class DockEventTap {
         let tookTooLong = CACurrentMediaTime() - pending.startedAt > 2.0
 
         if !pending.cancelled && !movedTooFar && !tookTooLong {
-            onOpenNewWindow?(pending.tile, pending.pid)
+            onDockAction?(pending.tile, pending.pid, pending.inverted)
         } else {
             Log.dock.debug("Dock click cancelled after movement/timeout.")
         }

@@ -34,8 +34,8 @@ targets:
       properties:
         CFBundleDisplayName: New Window Plz
         CFBundleIconName: AppIcon
-        CFBundleShortVersionString: "1.2.2"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "1.4.0"
+        CFBundleVersion: "12"
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: "14.0"
         LSMultipleInstancesProhibited: true
@@ -53,6 +53,13 @@ targets:
         ENABLE_TESTABILITY: YES
         ENABLE_DEBUG_DYLIB: NO
         ENABLE_PREVIEWS: NO
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "/System/Library/PrivateFrameworks"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-weak_framework"
+          - "SkyLight"
     scheme:
       gatherCoverageData: false
       testTargets:

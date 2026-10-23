@@ -24,10 +24,19 @@ final class DockClickPolicyTests: XCTestCase {
         )
     }
 
-    func testEveryShortcutModifierPassesThrough() {
+    func testControlClickIsInterceptedForInversion() {
+        XCTAssertEqual(
+            policy.decide(isEnabled: true, tile: tile, modifiers: [.maskControl]),
+            .openNewWindow
+        )
+    }
+
+    func testOtherShortcutModifiersPassThrough() {
         let modifiers: [CGEventFlags] = [
-            .maskShift, .maskControl, .maskAlternate, .maskCommand,
-            [.maskShift, .maskCommand], [.maskControl, .maskAlternate]
+            .maskAlternate, .maskCommand,
+            [.maskShift, .maskControl],
+            [.maskCommand, .maskControl],
+            [.maskControl, .maskAlternate]
         ]
         for modifier in modifiers {
             XCTAssertEqual(
@@ -62,5 +71,14 @@ final class DockClickPolicyTests: XCTestCase {
             policy.decide(isEnabled: false, tile: tile, modifiers: []),
             .passThrough(.disabled)
         )
+    }
+
+    func testControlInvertsEveryConfiguredAction() {
+        XCTAssertEqual(DockActionResolver.resolve(configured: nil, inverted: false), .newWindow)
+        XCTAssertEqual(DockActionResolver.resolve(configured: nil, inverted: true), .moveHere)
+        XCTAssertEqual(DockActionResolver.resolve(configured: .moveHere, inverted: false), .moveHere)
+        XCTAssertEqual(DockActionResolver.resolve(configured: .moveHere, inverted: true), .newWindow)
+        XCTAssertEqual(DockActionResolver.resolve(configured: .newWindow, inverted: false), .newWindow)
+        XCTAssertEqual(DockActionResolver.resolve(configured: .newWindow, inverted: true), .moveHere)
     }
 }

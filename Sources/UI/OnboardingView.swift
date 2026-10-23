@@ -30,7 +30,7 @@ struct OnboardingView: View {
                 Spacer(minLength: 0)
             }
 
-            Text("Click a running app’s Dock icon and it gets its **New Window** command. Hold **⇧ Shift** — or any other modifier — for the Dock’s normal behavior. Apps that aren’t running launch normally, which is already a new window.")
+            Text("Click a running app’s Dock icon and it runs its configured action: **New Window** by default, or **Move Here**. Hold **⇧ Shift** (or ⌘/⌥) for the Dock’s normal behavior; **⌃-click** does the opposite of the app’s rule. Apps that aren’t running launch normally.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -50,13 +50,28 @@ struct OnboardingView: View {
                     .foregroundStyle(.secondary)
             }
 
+            HStack(spacing: 9) {
+                Text("⌥")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .frame(width: 26, height: 24)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.08)))
+                Text("`")
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .padding(.horizontal, 7)
+                    .frame(height: 24)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.08)))
+                Text("returns to the Space you were on before the current one.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             VStack(alignment: .leading, spacing: 11) {
                 step(number: "1", title: "Grant Accessibility access",
-                     detail: "Used only to read the Dock and trigger the target app’s own menu command.")
+                     detail: "Used to read the Dock, invoke New Window, and move existing windows between Spaces.")
                 step(number: "2", title: "Click any running Dock icon",
-                     detail: "The click is swallowed, then the app opens a fresh window.")
-                step(number: "3", title: "Hold Shift to use macOS normally",
-                     detail: "All modified clicks pass through untouched.")
+                     detail: "The click is swallowed, then the app runs its New Window or Move Here action.")
+                step(number: "3", title: "Shift for native, Control to invert",
+                     detail: "Shift, Command, and Option keep native Dock behavior. Control inverts the rule.")
             }
 
             statusBox
@@ -86,7 +101,7 @@ struct OnboardingView: View {
             }
         }
         .padding(28)
-        .frame(width: 600, height: 590)
+        .frame(width: 600, height: 620)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

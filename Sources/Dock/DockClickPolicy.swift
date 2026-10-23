@@ -13,11 +13,11 @@ enum DockPassReason: String, Equatable {
 }
 
 struct DockClickPolicy {
-    /// The user asked specifically for Shift-click to retain the normal Dock
-    /// behavior. Every other shortcut modifier is passed through too so the
-    /// app never steals Option/Control/Command Dock gestures.
+    /// Shift-click retains the normal Dock behavior, and so do Command and
+    /// Option combinations. Control-click is deliberately intercepted: it is
+    /// the "do the opposite action" gesture for an app rule.
     static let passThroughModifiers: CGEventFlags = [
-        .maskShift, .maskControl, .maskAlternate, .maskCommand
+        .maskShift, .maskAlternate, .maskCommand
     ]
 
     func decide(isEnabled: Bool,

@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var settings: AppSettings
+    @ObservedObject var rules: AppRulesStore
 
     let onRequestAccess: () -> Void
     let onOpenSystemSettings: () -> Void
@@ -11,6 +12,7 @@ struct SettingsView: View {
     let onRequestScreenCapture: () -> Void
     let onOpenScreenRecordingSettings: () -> Void
     let onCopyDiagnostics: () -> Void
+    let onToggleAppPicker: () -> Void
 
     var body: some View {
         ScrollView {
@@ -20,8 +22,8 @@ struct SettingsView: View {
                 SettingsCard(title: "Dock clicks", systemImage: "dock.rectangle") {
                     Toggle(isOn: $settings.monitoringEnabled) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Open a new window on every Dock click")
-                            Text("Hold ⇧ Shift, ⌘, ⌥, or ⌃ for the Dock’s normal behavior.")
+                            Text("Enable Dock click actions")
+                            Text("By default a click opens a new window. Per-app rules below can move the existing window here. Hold ⇧ Shift, ⌘, or ⌥ for the Dock’s normal behavior; ⌃-click does the opposite of the app’s action.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -55,6 +57,101 @@ struct SettingsView: View {
                     }
                 }
 
+                SettingsCard(title: "Per-app Dock actions", systemImage: "arrow.right.to.line") {
+                    Text("For these apps, a plain Dock click brings the existing window to the Space and screen you are on instead of opening a new window.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if rules.rules.isEmpty {
+                        Text("No app rules yet. Pick one from the Dock below.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        ForEach(rules.rules) { rule in
+                            HStack(spacing: 10) {
+                                Image(nsImage: rules.appIcon(for: rule.bundleIdentifier))
+                                    .resizable()
+                                    .interpolation(.high)
+                                    .frame(width: 26, height: 26)
+
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(rule.displayName)
+                                        .font(.callout.weight(.medium))
+                                    Text(rule.action.detail)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+
+                                Spacer(minLength: 8)
+
+                                Picker("", selection: Binding(
+                                    get: { rule.action },
+                                    set: { rules.setAction($0, for: rule.id) }
+                                )) {
+                                    ForEach(DockClickAction.allCases) { action in
+                                        Text(action.title).tag(action)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .labelsHidden()
+                                .frame(width: 190)
+
+                                Button {
+                                    rules.remove(rule.id)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .help("Remove rule")
+                            }
+                            .padding(.vertical, 3)
+                        }
+                    }
+
+                    Divider()
+
+                    HStack(spacing: 10) {
+                        Button(action: onToggleAppPicker) {
+                            Label(
+                                model.isPickingApp ? "Cancel Picker" : "Pick App from Dock…",
+                                systemImage: model.isPickingApp ? "hand.point.up.left" : "plus"
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+
+                        if model.isPickingApp {
+                            Text("Picker active — click any app in the Dock. Picking an existing rule toggles its action.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("⌃-click does the opposite of the selected action. Shift-click keeps native Dock behavior.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                SettingsCard(title: "Control-click", systemImage: "cursorarrow.click") {
+                    Toggle(isOn: $settings.disableControlClick) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Disable Control-click → right-click")
+                            Text("Strips Control from left clicks before macOS turns them into a right-click, matching DisableCtrlClick. This is system-wide. Dock Control-click inversion works whether this is on or off.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .toggleStyle(.switch)
+
+                    Text("Turn this off to restore the standard macOS Control-click context menu. The Dock inversion falls back to reading the physical Control key either way.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 SettingsCard(title: "Window switcher", systemImage: "rectangle.on.rectangle") {
                     Toggle(isOn: $settings.altTabEnabled) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -79,6 +176,11 @@ struct SettingsView: View {
                     }
 
                     Text("Shows each on-screen window in the current Space, including multiple windows from the same app. Tab updates only the selection index and submits a new prewarmed frame.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("Press ⌥` to jump back to the previous Space. Switches instantly by Space ID without walking through intermediate desktops.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -206,7 +308,7 @@ struct SettingsView: View {
                 }
 
                 HStack {
-                    Text("New Window Plz 1.2.2")
+                    Text("New Window Plz \(AppVersion.short)")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                     Spacer()
@@ -217,7 +319,7 @@ struct SettingsView: View {
             }
             .padding(20)
         }
-        .frame(width: 580, height: 670)
+        .frame(width: 640, height: 760)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

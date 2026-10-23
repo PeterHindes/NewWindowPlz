@@ -7,6 +7,7 @@ final class AltTabController {
     private let settings: AppSettings
     private let eventTap = AltTabEventTap()
     private let snapshotService = WindowSnapshotService()
+    private let spaceController = SpaceController()
 
     private let catalogQueue = DispatchQueue(label: "com.peter.newwindowplz.window-catalog", qos: .userInitiated)
     private var cachedWindows: [AltTabWindow] = []
@@ -42,6 +43,12 @@ final class AltTabController {
         eventTap.onCancel = { [weak self] in
             self?.cancel()
         }
+        eventTap.onPreviousSpace = { [weak self] in
+            self?.spaceController.switchToPreviousSpace()
+        }
+        spaceController.onFailure = { [weak self] message in
+            self?.model.lastFailure = message
+        }
 
         snapshotService.onImage = { [weak self] windowID, image in
             self?.overlayHost.updateWindowSnapshot(windowID: windowID, image: image)
@@ -69,6 +76,7 @@ final class AltTabController {
 
         isRunning = true
         model.altTabActive = true
+        spaceController.start()
         installObservers()
         startCatalogTimer()
         scheduleContentPreparation()
@@ -88,6 +96,7 @@ final class AltTabController {
         catalogTimer?.invalidate()
         catalogTimer = nil
         removeObservers()
+        spaceController.stop()
         eventTap.stop()
         if isPresenting {
             isPresenting = false
@@ -95,6 +104,14 @@ final class AltTabController {
         }
         model.altTabActive = false
         Log.action.info("Window switcher stopped.")
+    }
+
+    func noteCurrentSpaceBeforeActivation() {
+        spaceController.noteSpaceBeforeActivation()
+    }
+
+    func returnToPreviousSpace() {
+        spaceController.switchToPreviousSpace()
     }
 
     func scheduleContentPreparation() {

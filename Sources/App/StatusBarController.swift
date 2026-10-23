@@ -11,7 +11,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let onOpenOnboarding: () -> Void
     private let onTestOverlay: () -> Void
     private let onTestSwitcher: () -> Void
+    private let onReturnToPreviousSpace: () -> Void
     private let onCopyDiagnostics: () -> Void
+    private let onToggleAppPicker: () -> Void
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -21,14 +23,18 @@ final class StatusBarController: NSObject, NSMenuDelegate {
          onOpenOnboarding: @escaping () -> Void,
          onTestOverlay: @escaping () -> Void,
          onTestSwitcher: @escaping () -> Void,
-         onCopyDiagnostics: @escaping () -> Void) {
+         onReturnToPreviousSpace: @escaping () -> Void,
+         onCopyDiagnostics: @escaping () -> Void,
+         onToggleAppPicker: @escaping () -> Void) {
         self.model = model
         self.settings = settings
         self.onOpenSettings = onOpenSettings
         self.onOpenOnboarding = onOpenOnboarding
         self.onTestOverlay = onTestOverlay
         self.onTestSwitcher = onTestSwitcher
+        self.onReturnToPreviousSpace = onReturnToPreviousSpace
         self.onCopyDiagnostics = onCopyDiagnostics
+        self.onToggleAppPicker = onToggleAppPicker
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         super.init()
@@ -96,7 +102,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         }
 
         let toggle = NSMenuItem(
-            title: "Open New Window on Dock Click",
+            title: "Enable Dock Click Actions",
             action: #selector(toggleMonitoring),
             keyEquivalent: ""
         )
@@ -112,6 +118,23 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         switcherToggle.target = self
         switcherToggle.state = settings.altTabEnabled ? .on : .off
         menu.addItem(switcherToggle)
+
+        let controlClick = NSMenuItem(
+            title: "Disable Control-click → Right-click",
+            action: #selector(toggleControlClick),
+            keyEquivalent: ""
+        )
+        controlClick.target = self
+        controlClick.state = settings.disableControlClick ? .on : .off
+        menu.addItem(controlClick)
+
+        let appPicker = NSMenuItem(
+            title: model.isPickingApp ? "Cancel App Picker" : "Add Dock App to Move List…",
+            action: #selector(toggleAppPicker),
+            keyEquivalent: ""
+        )
+        appPicker.target = self
+        menu.addItem(appPicker)
 
         let snapshots = NSMenuItem(
             title: "Show Window Snapshots",
@@ -140,6 +163,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         switcher.target = self
         switcher.isEnabled = overlayReady
         menu.addItem(switcher)
+
+        let previousSpace = NSMenuItem(
+            title: "Return to Previous Space",
+            action: #selector(returnToPreviousSpace),
+            keyEquivalent: ""
+        )
+        previousSpace.target = self
+        menu.addItem(previousSpace)
 
         let overlay = NSMenuItem(title: "Test Metal Overlay", action: #selector(testOverlay), keyEquivalent: "t")
         overlay.keyEquivalentModifierMask = [.command]
@@ -208,6 +239,15 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         settings.altTabEnabled.toggle()
     }
 
+    @objc private func toggleControlClick() {
+        settings.disableControlClick.toggle()
+    }
+
+    @objc private func toggleAppPicker() {
+        onToggleAppPicker()
+        rebuildMenu()
+    }
+
     @objc private func toggleSnapshots() {
         settings.showWindowSnapshots.toggle()
         if settings.showWindowSnapshots && !model.screenCaptureGranted {
@@ -221,6 +261,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func testSwitcher() {
         onTestSwitcher()
+    }
+
+    @objc private func returnToPreviousSpace() {
+        onReturnToPreviousSpace()
     }
 
     @objc private func openSettings() {

@@ -2,7 +2,7 @@
 
 A tiny macOS menu-bar app with two jobs:
 
-1. **Plain Dock clicks open a new window.** Hold **⇧ Shift** — or any other modifier — for the Dock's normal behavior.
+1. **Plain Dock clicks open a new window.** Hold **⇧ Shift** (or ⌘/⌥) for the Dock’s normal behavior. **⌃-click** does the opposite of the app’s selected action: unselected apps move their existing window here, and Move Here apps open a new window.
 2. **⌥Tab is a fast, current-Space window switcher.** It lists one entry per on-screen window, not just apps. Hold Option, tap Tab to cycle, release Option to raise the selected window.
 
 Both use one resident Metal surface. There is no window creation, SwiftUI evaluation, or GPU wait on the reveal path. Window snapshots are optional and are captured asynchronously after the switcher is already visible.
@@ -18,11 +18,16 @@ Both use one resident Metal surface. There is no window creation, SwiftUI evalua
 | Click a running app's Dock icon | The app receives its own **New Window** command via Accessibility |
 | Click an app that is not running | Native launch (already a new window) |
 | Shift-click | Native Dock behavior, untouched |
-| ⌘ / ⌥ / ⌃-click | Native Dock behavior, untouched |
-| Right-click, folders, Trash, minimized-window tiles | Untouched |
+| ⌃-click | Opposite of the app’s selected Dock action |
+| ⌘ / ⌥-click | Native Dock behavior, untouched |
+| Right-click without Control, folders, Trash, minimized-window tiles | Untouched |
 | Drag while clicking | Cancelled; the click is consumed rather than acting on another app |
 
 System launchers stored in the Dock (**Apps**, **Launchpad**, Mission Control) are deliberately excluded.
+
+### Control-click system toggle
+
+New Window Plz includes a built-in replacement for **DisableCtrlClick**. The **Control-click** setting strips Control from left-mouse events at the HID layer, so macOS does not turn Control-click into a right-click anywhere in the system. Dock inversion works whether this toggle is on or off; with it off, New Window Plz detects the physical Control key on the converted right-click instead.
 
 ### ⌥Tab window switcher
 
@@ -36,6 +41,12 @@ System launchers stored in the Dock (**Apps**, **Launchpad**, Mission Control) a
 | Release **⌥** | Raise the selected window |
 | **Return** | Raise immediately |
 | **Esc** | Dismiss without switching |
+| **⌥`** | Jump back to the previous Space |
+| **App rules** | Move an existing window here or open a new one per app |
+
+**⌃-click** inverts the per-app rule. With no rule, the app defaults to New Window, so Control-click moves its existing window here. With a Move Here rule, Control-click opens a new window. Shift, Command, and Option clicks still use native Dock behavior.
+
+**⌥`** returns to the Space you were on before the current one. It resolves the target by Space ID and uses an instant synthetic Dock-swipe, so it jumps directly without walking through intermediate desktops and does not depend on Mission Control keyboard shortcuts. This is the same gesture technique used by [WhichSpace](https://github.com/gechr/whichspace).
 
 Only windows that are currently composited in the active Space are listed. Minimized windows, windows on other Spaces, and the app's own windows are excluded. Multiple windows from the same app appear as separate entries with their window titles.
 
@@ -64,7 +75,7 @@ If snapshots remain blank after granting Screen Recording, relaunch the app. The
 
 ## Install
 
-**[Download New Window Plz 1.2](https://github.com/PeterHindes/NewWindowPlz/releases/latest/download/NewWindowPlz-macOS.zip)** — 1.2 MB, macOS 14+, universal. There's also a [landing page](https://peterhindes.github.io/NewWindowPlz/).
+**[Download New Window Plz 1.4.0](https://github.com/PeterHindes/NewWindowPlz/releases/latest/download/NewWindowPlz-macOS.zip)** — 1.4 MB, macOS 14+, universal. There's also a [landing page](https://peterhindes.github.io/NewWindowPlz/).
 
 The download is ad-hoc signed but not notarized, so macOS warns the first time you open it. Right-click → **Open**, or clear the quarantine flag once:
 
@@ -120,7 +131,7 @@ SWITCHER_BENCHMARK reveal_median_us=146.4      (7-window switcher)
 
 That is **~0.15–0.21 ms to reveal a cached window list** and **~0.23–0.43 ms end-to-end** with window enumeration served from cache. The one-time cold scan (first use, or whenever the window cache is empty) is ~24–35 ms and happens before the cached path is ready. The actual pixels appear on the next display refresh (8.3 ms at 120 Hz), the physical lower bound for a compositor overlay.
 
-The 1.2.2 release was exercised end-to-end on this Mac: current-Space window enumeration, single-window raising, rapid repeated ⌥Tab, live window snapshots, and the page-slide animation all work.
+The 1.4.0 release was exercised end-to-end on this Mac, including a rebuild that retained Accessibility thanks to the stable signing identity: current-Space window enumeration, single-window raising, rapid repeated ⌥Tab, live window snapshots, the page-slide animation, instant return to the previous Space, per-app Move Here rules, the Dock picker, full-screen Move Here, Control-click inversion, and both states of the built-in Control-click toggle all work. It also fixes a long-running crash caused by a transient duplicate PID in `NSWorkspace.runningApplications`.
 
 Run the benchmarks yourself:
 
@@ -195,6 +206,19 @@ open NewWindowPlz.xcodeproj
 ```
 
 The test target compiles all XCTest cases. On restricted/headless environments where Xcode cannot allocate a pseudo-terminal for the test host, use the built-in `--self-test` command instead.
+
+### Releasing
+
+Releases are built by GitHub Actions (`.github/workflows/release.yml`). Push a version tag:
+
+```bash
+git tag v1.2.4
+git push origin v1.2.4
+```
+
+The workflow runs the unit tests, builds a universal Release app (Apple silicon + Intel), ad-hoc signs it, and publishes a GitHub release with `NewWindowPlz-macOS.zip`, a SHA-256 checksum, and generated release notes. `CFBundleShortVersionString` is stamped from the tag (pre-release suffixes such as `v1.2.4-beta.1` are dropped from the bundle version and the release is marked as a pre-release), and `CFBundleVersion` is the commit count.
+
+You can also run the workflow manually from the Actions tab to build an artifact without publishing a release. No repository secrets are required; the workflow uses the built-in `GITHUB_TOKEN`.
 
 ## Limitations
 

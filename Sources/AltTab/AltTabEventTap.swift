@@ -16,6 +16,7 @@ final class AltTabEventTap {
     var onAdvance: ((_ reverse: Bool) -> Void)?
     var onCommit: (() -> Void)?
     var onCancel: (() -> Void)?
+    var onPreviousSpace: (() -> Void)?
 
     private enum KeyCode {
         static let tab: CGKeyCode = 0x30
@@ -26,6 +27,8 @@ final class AltTabEventTap {
         static let rightArrow: CGKeyCode = 0x7C
         static let downArrow: CGKeyCode = 0x7D
         static let upArrow: CGKeyCode = 0x7E
+        static let backtick: CGKeyCode = 0x32
+        static let backtickISO: CGKeyCode = 0x0A
     }
 
     @discardableResult
@@ -166,6 +169,14 @@ final class AltTabEventTap {
                 DispatchQueue.main.async { [weak self] in
                     self?.onBegin?(reverse)
                 }
+            }
+            swallowedKeys.insert(keyCode)
+            return nil
+        }
+
+        if !isActive, (keyCode == KeyCode.backtick || keyCode == KeyCode.backtickISO), optionHeld {
+            DispatchQueue.main.async { [weak self] in
+                self?.onPreviousSpace?()
             }
             swallowedKeys.insert(keyCode)
             return nil

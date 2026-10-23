@@ -1,0 +1,231 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (for example 1.2.4). Defaults to Resources/Info.plist."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROJECT: NewWindowPlz.xcodeproj
+  SCHEME: NewWindowPlz
+  APP_NAME: New Window Plz
+  ZIP_NAME: NewWindowPlz-macOS.zip
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install xcodegen
+          fi
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -derivedDataPath .build/DerivedData \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=YES \
+            2>&1 | tee xcodebuild-test.log
+
+      - name: Upload test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-test-log
+          path: xcodebuild-test.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release:
+    name: Package release
+    needs: test
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install xcodegen
+          fi
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [[ -n "${INPUT_VERSION}" ]]; then
+            VERSION="${INPUT_VERSION#v}"
+          else
+            VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a valid version. Expected 1.2.3 or 1.2.3-beta.1."
+            exit 1
+          fi
+
+          # CFBundleShortVersionString must be numeric, so drop any pre-release suffix.
+          APP_VERSION="${VERSION%%-*}"
+          BUILD_NUMBER="$(git rev-list --count HEAD)"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Building New Window Plz $VERSION ($BUILD_NUMBER, bundle version $APP_VERSION)"
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build universal Release app
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -derivedDataPath .build/ReleaseDerivedData \
+            -destination 'generic/platform=macOS' \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            build
+
+      - name: Ad-hoc sign and package
+        env:
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        run: |
+          set -euo pipefail
+
+          SRC=".build/ReleaseDerivedData/Build/Products/Release/NewWindowPlz.app"
+          DEST="dist/$APP_NAME.app"
+
+          mkdir -p dist
+          rm -rf "$DEST"
+          ditto "$SRC" "$DEST"
+
+          # Stamp the tag/input version over the plist generated from project.yml.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$DEST/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$DEST/Contents/Info.plist"
+
+          codesign --force --deep --sign - --timestamp=none "$DEST"
+          codesign --verify --deep --strict --verbose=2 "$DEST"
+
+          BINARY="$DEST/Contents/MacOS/NewWindowPlz"
+          ARCHES="$(lipo -archs "$BINARY")"
+          echo "Built architectures: $ARCHES"
+          if [[ "$ARCHES" != *arm64* || "$ARCHES" != *x86_64* ]]; then
+            echo "::error::Expected a universal binary, got: $ARCHES"
+            exit 1
+          fi
+
+          ditto -c -k --sequesterRsrc --keepParent "$DEST" "dist/$ZIP_NAME"
+          (cd dist && shasum -a 256 "$ZIP_NAME" > "$ZIP_NAME.sha256")
+          ls -lh dist
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NewWindowPlz-${{ steps.version.outputs.version }}
+          path: |
+            dist/${{ env.ZIP_NAME }}
+            dist/${{ env.ZIP_NAME }}.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              "dist/$ZIP_NAME" \
+              "dist/$ZIP_NAME.sha256" \
+              --clobber \
+              --repo "$GITHUB_REPOSITORY"
+            exit 0
+          fi
+
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          GENERATED_NOTES="$RUNNER_TEMP/generated-notes.md"
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f tag_name="$TAG" \
+            --jq .body > "$GENERATED_NOTES" 2>/dev/null || : > "$GENERATED_NOTES"
+
+          {
+            echo "macOS 14 or later · Universal (Apple silicon and Intel) · Ad-hoc signed, not notarized."
+            echo
+            echo "The download is ad-hoc signed, so macOS warns the first time you open it. Right-click → **Open**, or clear the quarantine flag once:"
+            echo
+            echo '```bash'
+            echo 'xattr -dr com.apple.quarantine "/Applications/New Window Plz.app"'
+            echo '```'
+            echo
+            cat "$GENERATED_NOTES"
+          } > "$NOTES_FILE"
+
+          if [[ "$VERSION" == *-* ]]; then
+            gh release create "$TAG" \
+              "dist/$ZIP_NAME" \
+              "dist/$ZIP_NAME.sha256" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "New Window Plz $VERSION" \
+              --notes-file "$NOTES_FILE" \
+              --verify-tag \
+              --prerelease
+          else
+            gh release create "$TAG" \
+              "dist/$ZIP_NAME" \
+              "dist/$ZIP_NAME.sha256" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "New Window Plz $VERSION" \
+              --notes-file "$NOTES_FILE" \
+              --verify-tag
+          fi

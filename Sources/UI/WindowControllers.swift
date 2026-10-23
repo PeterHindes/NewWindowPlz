@@ -26,7 +26,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.isMovableByWindowBackground = true
         window.backgroundColor = .windowBackgroundColor
-        window.setContentSize(NSSize(width: 600, height: 590))
+        window.setContentSize(NSSize(width: 600, height: 620))
         window.center()
         window.level = .normal
 
@@ -52,23 +52,27 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     init(model: AppModel,
          settings: AppSettings,
+         rules: AppRulesStore,
          onRequestAccess: @escaping () -> Void,
          onOpenSystemSettings: @escaping () -> Void,
          onTestOverlay: @escaping () -> Void,
          onTestSwitcher: @escaping () -> Void,
          onRequestScreenCapture: @escaping () -> Void,
          onOpenScreenRecordingSettings: @escaping () -> Void,
-         onCopyDiagnostics: @escaping () -> Void) {
+         onCopyDiagnostics: @escaping () -> Void,
+         onToggleAppPicker: @escaping () -> Void) {
         let rootView = SettingsView(
             model: model,
             settings: settings,
+            rules: rules,
             onRequestAccess: onRequestAccess,
             onOpenSystemSettings: onOpenSystemSettings,
             onTestOverlay: onTestOverlay,
             onTestSwitcher: onTestSwitcher,
             onRequestScreenCapture: onRequestScreenCapture,
             onOpenScreenRecordingSettings: onOpenScreenRecordingSettings,
-            onCopyDiagnostics: onCopyDiagnostics
+            onCopyDiagnostics: onCopyDiagnostics,
+            onToggleAppPicker: onToggleAppPicker
         )
         let hosting = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hosting)
@@ -77,7 +81,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.isMovableByWindowBackground = true
         window.backgroundColor = .windowBackgroundColor
-        window.setContentSize(NSSize(width: 580, height: 670))
+        window.setContentSize(NSSize(width: 640, height: 760))
         window.center()
         window.setFrameAutosaveName("NewWindowPlz.Settings")
 

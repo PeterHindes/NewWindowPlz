@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var dockClickController: DockClickController!
     private var newWindowController: NewWindowController!
     private var altTabController: AltTabController!
+    private let controlClickFilter = ControlClickFilter()
 
     private var onboardingWindowController: OnboardingWindowController?
     private var settingsWindowController: SettingsWindowController?
@@ -80,11 +81,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             eventTap: eventTap,
             newWindowController: newWindowController,
             model: model,
-            settings: settings
+            settings: settings,
+            rules: AppRulesStore.shared
         )
 
         overlayHost = OverlayHost(model: model)
         altTabController = AltTabController(overlayHost: overlayHost, model: model, settings: settings)
+        newWindowController.onWillActivate = { [weak self] in
+            self?.altTabController.noteCurrentSpaceBeforeActivation()
+        }
         statusBarController = StatusBarController(
             model: model,
             settings: settings,
@@ -92,7 +97,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onOpenOnboarding: { [weak self] in self?.showOnboarding() },
             onTestOverlay: { [weak self] in self?.overlayHost.showDemo() },
             onTestSwitcher: { [weak self] in self?.altTabController.preview() },
-            onCopyDiagnostics: { [weak self] in self?.copyDiagnostics() }
+            onReturnToPreviousSpace: { [weak self] in self?.altTabController.returnToPreviousSpace() },
+            onCopyDiagnostics: { [weak self] in self?.copyDiagnostics() },
+            onToggleAppPicker: { [weak self] in self?.dockClickController.toggleAppPicker() }
         )
 
         observeSettings()
@@ -125,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        controlClickFilter.stop()
         permissionTimer?.invalidate()
         healthTimer?.invalidate()
         dockClickController?.stop()
@@ -163,6 +171,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.applyAltTabState()
+                self?.statusBarController.refreshMenu()
+            }
+            .store(in: &cancellables)
+
+        settings.$disableControlClick
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.applyControlClickFilter()
                 self?.statusBarController.refreshMenu()
             }
             .store(in: &cancellables)
@@ -210,6 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             dockClickController.stop()
             altTabController.stop()
+            controlClickFilter.stop()
             model.lastFailure = "Accessibility access was revoked. Grant it again to resume monitoring."
         }
     }
@@ -217,6 +235,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyRuntimeState() {
         applyMonitoringState()
         applyAltTabState()
+        applyControlClickFilter()
+    }
+
+    private func applyControlClickFilter() {
+        if settings.disableControlClick, model.permissionGranted {
+            _ = controlClickFilter.start()
+        } else {
+            controlClickFilter.stop()
+        }
     }
 
     private func applyMonitoringState() {
@@ -238,6 +265,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func performHealthCheck() {
+        if !model.permissionGranted || !settings.disableControlClick {
+            if controlClickFilter.isRunning {
+                controlClickFilter.stop()
+            }
+        } else if !controlClickFilter.isRunning {
+            _ = controlClickFilter.start()
+        }
+
         if !model.permissionGranted || !settings.monitoringEnabled {
             if dockClickController?.isMonitoring == true {
                 dockClickController.stop()
@@ -299,6 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = SettingsWindowController(
             model: model,
             settings: settings,
+            rules: AppRulesStore.shared,
             onRequestAccess: { [weak self] in
                 AccessibilityPermission.requestPrompt()
                 self?.model.refreshPermission()
@@ -322,6 +358,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onCopyDiagnostics: { [weak self] in
                 self?.copyDiagnostics()
+            },
+            onToggleAppPicker: { [weak self] in
+                self?.dockClickController.toggleAppPicker()
             }
         )
         settingsWindowController = controller
@@ -398,7 +437,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.orderFrontStandardAboutPanel(options: [
             .credits: credits,
             .applicationName: "New Window Plz",
-            .applicationVersion: "1.2.2"
+            .applicationVersion: AppVersion.short,
+            .version: AppVersion.build
         ])
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -610,6 +650,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               "plain click on a running app opens a new window")
         check(policy.decide(isEnabled: true, tile: runningTile, modifiers: [.maskShift]) == .passThrough(.modifierKey),
               "shift-click passes through")
+        check(policy.decide(isEnabled: true, tile: runningTile, modifiers: [.maskControl]) == .openNewWindow,
+              "control-click is intercepted for inversion")
+        check(DockActionResolver.resolve(configured: nil, inverted: true) == .moveHere,
+              "control-click moves an unconfigured app here")
+        check(DockActionResolver.resolve(configured: .moveHere, inverted: true) == .newWindow,
+              "control-click opens a new window for a Move Here app")
         check(policy.decide(isEnabled: true, tile: stoppedTile, modifiers: []) == .passThrough(.applicationNotRunning),
               "click on a stopped app passes through")
         check(ScreenEdgeProximity.isNearEdge(CGPoint(x: 10, y: 500), in: CGRect(x: 0, y: 0, width: 1000, height: 800), band: 220),
@@ -630,6 +676,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               "switcher wraps backward")
         check(AltTabSelection.visibleRange(count: 12, selectedIndex: 8).count == 7,
               "switcher limits the visible row")
+        check(SpaceSwitchPlan.steps(fromIndex: 2, toIndex: 5) == 3,
+              "Space return plans forward steps")
+        check(SpaceSwitchPlan.steps(fromIndex: 5, toIndex: 2) == -3,
+              "Space return plans backward steps")
+        check(!SpaceMetadata.displays().isEmpty, "Space metadata is available")
+        check(WindowMover.isAvailable, "window-to-Space move backend is available")
+        let ruleStore = AppRulesStore(defaults: UserDefaults(suiteName: "NewWindowPlzSelfTest")!)
+        ruleStore.remove("com.apple.iCal")
+        let added = ruleStore.toggleOrAdd(bundleIdentifier: "com.apple.iCal", title: "Calendar")
+        check(added.added && added.rule.action == .moveHere, "picker adds apps as Move Here")
+        let toggled = ruleStore.toggleOrAdd(bundleIdentifier: "com.apple.iCal", title: "Calendar")
+        check(!toggled.added && toggled.rule.action == .newWindow, "picker toggles existing apps")
+        UserDefaults.standard.removePersistentDomain(forName: "NewWindowPlzSelfTest")
 
         let best = NewWindowMenuScoring.best(in: [
             MenuCandidate(title: "New Tab", keyEquivalent: "t", commandModifiers: 0, enabled: true, hasChildren: false, path: ["File"]),
